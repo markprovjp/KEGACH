@@ -13,18 +13,18 @@ export function KanbanOrderCard({ order }: { order: KanbanOrder }) {
     <Card ref={setNodeRef} className="kanban-card" size="small" style={style} {...listeners} {...attributes}>
       <div className="card-line">
         <Typography.Text strong>{order.kiotInvoiceCode}</Typography.Text>
-        <Badge color={order.codAmount > 0 ? "green" : "blue"} text={order.codAmount > 0 ? "COD" : "Cong no"} />
+        <Badge color={order.codAmount > 0 ? "green" : "blue"} text={order.codAmount > 0 ? "COD" : "Công nợ"} />
       </div>
       <Typography.Text>{order.customer}</Typography.Text>
       <div className="muted"><PhoneOutlined /> {order.phone}</div>
       <div>{order.productSummary}</div>
       <div className="card-line">
         <span>{order.province}</span>
-        <b>{order.total.toLocaleString("vi-VN")}d</b>
+        <b>{order.total.toLocaleString("vi-VN")}đ</b>
       </div>
       <div className="card-line muted">
         <span>{order.sendDate}</span>
-        <span>{order.driver ?? "Chua gan xe"}</span>
+        <span>{order.driver ?? "Chưa gán xe"}</span>
       </div>
       {order.warnings.map((warning) => (
         <Tag key={warning} color="gold" icon={<WarningOutlined />} style={{ marginTop: 6 }}>

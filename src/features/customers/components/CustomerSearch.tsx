@@ -13,7 +13,7 @@ export function CustomerSearch({ value, onChange }: { value?: string; onChange?:
         value={value}
         onChange={onChange}
         optionFilterProp="label"
-        placeholder="Chon khach hang"
+        placeholder="Chọn khách hàng"
         options={sampleCustomers.map((item) => ({ value: item.id, label: `${item.name} - ${item.phone}` }))}
       />
       {customer ? <Typography.Text type="secondary">{customer.recentPriceNote}</Typography.Text> : null}

@@ -4,8 +4,8 @@ import { ReconciliationTable } from "@/features/reconciliation/components/Reconc
 export default function ReconciliationPage() {
   return (
     <main>
-      <h1 className="page-title">Doi soat Kiot</h1>
-      <p className="page-subtitle">Nhap/xuat danh sach hoa don Kiot thu cong, gan voi order app, ghi ly do moi khi xu ly lech.</p>
+      <h1 className="page-title">Đối soát Kiot</h1>
+      <p className="page-subtitle">Nhập/xuất danh sách hóa đơn Kiot thủ công, gắn với order app, ghi lý do mỗi khi xử lý lệch.</p>
       <Card>
         <ReconciliationTable />
       </Card>

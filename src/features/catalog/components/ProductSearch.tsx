@@ -10,10 +10,10 @@ export function ProductSearch({ value, onChange }: { value?: string; onChange?: 
       value={value}
       onChange={onChange}
       optionFilterProp="label"
-      placeholder="Chon san pham"
+      placeholder="Chọn sản phẩm"
       options={sampleProducts.map((product) => ({
         value: product.id,
-        label: `${product.name} - ${product.defaultPrice.toLocaleString("vi-VN")}d/${product.unit}`
+        label: `${product.name} - ${product.defaultPrice.toLocaleString("vi-VN")}đ/${product.unit}`
       }))}
     />
   );

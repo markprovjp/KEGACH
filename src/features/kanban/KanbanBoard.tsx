@@ -9,15 +9,15 @@ import { KanbanColumn } from "./KanbanColumn";
 import type { KanbanColumnDefinition, KanbanOrder } from "./kanban-types";
 
 const columns: KanbanColumnDefinition[] = [
-  { status: "awaiting_kiot", title: "Cho HD Kiot" },
-  { status: "kiot_linked", title: "Da gan Kiot" },
-  { status: "reserved", title: "Da giu hang" },
-  { status: "packing", title: "Dang dong" },
-  { status: "packed", title: "Dong xong" },
-  { status: "waiting_vehicle", title: "Cho xe" },
-  { status: "scheduled", title: "Da xep lich" },
-  { status: "shipped", title: "Da gui" },
-  { status: "problem", title: "Co van de" }
+  { status: "awaiting_kiot", title: "Chờ HĐ Kiot" },
+  { status: "kiot_linked", title: "Đã gắn Kiot" },
+  { status: "reserved", title: "Đã giữ hàng" },
+  { status: "packing", title: "Đang đóng" },
+  { status: "packed", title: "Đóng xong" },
+  { status: "waiting_vehicle", title: "Chờ xe" },
+  { status: "scheduled", title: "Đã xếp lịch" },
+  { status: "shipped", title: "Đã gửi" },
+  { status: "problem", title: "Có vấn đề" }
 ];
 
 export function KanbanBoard() {
@@ -38,7 +38,7 @@ export function KanbanBoard() {
     if (!order) return;
 
     if (!canTransitionOrder(order.status, nextStatus as KanbanOrder["status"])) {
-      message.warning(`Khong the chuyen ${order.kiotInvoiceCode} tu ${order.status} sang ${nextStatus}`);
+      message.warning(`Không thể chuyển ${order.kiotInvoiceCode} từ ${order.status} sang ${nextStatus}`);
       return;
     }
 
@@ -56,7 +56,7 @@ export function KanbanBoard() {
             </div>
             {(grouped.get(column.status) ?? []).map((order) => (
               <div key={order.id} className="kanban-card static-card">
-                <div className="card-line"><b>{order.kiotInvoiceCode}</b><span>{order.codAmount > 0 ? "COD" : "Cong no"}</span></div>
+                <div className="card-line"><b>{order.kiotInvoiceCode}</b><span>{order.codAmount > 0 ? "COD" : "Công nợ"}</span></div>
                 <div>{order.customer}</div>
                 <div className="muted">{order.productSummary}</div>
               </div>
@@ -82,7 +82,7 @@ export function KanbanBoard() {
       <Alert
         type="info"
         showIcon
-        title="Kanban chi doi trang thai van hanh. Hoa don, doanh thu, khach va cong no van doi soat tren Kiot."
+        title="Kanban chỉ đổi trạng thái vận hành. Hóa đơn, doanh thu, khách và công nợ vẫn đối soát trên Kiot."
         style={{ marginBottom: 12 }}
       />
       {board}

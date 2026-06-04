@@ -6,7 +6,7 @@ body {
   margin: 0;
   background: #f4f6f8;
   color: #172033;
-  font-family: Arial, sans-serif;
+  font-family: "Segoe UI", sans-serif;
 }
 
 a {
@@ -57,6 +57,81 @@ a {
   border-radius: 8px;
   background: #f9fafb;
   padding: 12px;
+}
+
+.section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.bar-chart {
+  height: 220px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.bar-item {
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 24px 1fr 20px;
+  gap: 6px;
+  text-align: center;
+}
+
+.bar-value,
+.bar-label {
+  color: #667085;
+  font-size: 12px;
+}
+
+.bar-track {
+  position: relative;
+  border-radius: 6px;
+  background: #eef2f6;
+  overflow: hidden;
+}
+
+.bar-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #1677ff, #13c2c2);
+}
+
+.status-chart-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dispatch-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.dispatch-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 10px;
 }
 
 .table-fallback {
@@ -127,5 +202,14 @@ a {
 
   .content-shell {
     padding: 12px;
+  }
+
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

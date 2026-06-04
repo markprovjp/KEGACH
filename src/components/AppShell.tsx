@@ -16,12 +16,12 @@ import type React from "react";
 const { Header, Sider, Content } = Layout;
 
 const menuItems = [
-  { key: "/", icon: <DashboardOutlined />, label: <Link href="/">Tong quan</Link> },
-  { key: "/orders/new", icon: <PlusCircleOutlined />, label: <Link href="/orders/new">Tao don</Link> },
+  { key: "/", icon: <DashboardOutlined />, label: <Link href="/">Tổng quan</Link> },
+  { key: "/orders/new", icon: <PlusCircleOutlined />, label: <Link href="/orders/new">Tạo đơn</Link> },
   { key: "/board", icon: <AppstoreOutlined />, label: <Link href="/board">Kanban</Link> },
   { key: "/inventory", icon: <DatabaseOutlined />, label: <Link href="/inventory">Kho</Link> },
-  { key: "/reconciliation", icon: <AuditOutlined />, label: <Link href="/reconciliation">Doi soat</Link> },
-  { key: "/dispatch", icon: <CarOutlined />, label: "Dieu xe" }
+  { key: "/reconciliation", icon: <AuditOutlined />, label: <Link href="/reconciliation">Đối soát</Link> },
+  { key: "/dispatch", icon: <CarOutlined />, label: <Link href="/dispatch">Điều xe</Link> }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -35,13 +35,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Typography.Title level={4} style={{ margin: 0 }}>
             KeGach Ops
           </Typography.Title>
-          <Typography.Text type="secondary">Kiot la so cai, app la van hanh</Typography.Text>
+          <Typography.Text type="secondary">Kiot là sổ cái, app là vận hành</Typography.Text>
         </div>
         <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
       </Sider>
       <Layout>
         <Header style={{ background: "#fff", borderBottom: "1px solid #e4e7ec", height: 56, padding: "0 20px" }}>
-          <Typography.Text strong>Long Hai Plastic Operations</Typography.Text>
+          <Typography.Text strong>Long Hải Plastic Operations</Typography.Text>
         </Header>
         <Content className="content-shell">{children}</Content>
       </Layout>

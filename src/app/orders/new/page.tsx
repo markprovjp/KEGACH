@@ -4,8 +4,8 @@ import { OrderEntryForm } from "@/features/orders/components/OrderEntryForm";
 export default function NewOrderPage() {
   return (
     <main>
-      <h1 className="page-title">Tao don van hanh</h1>
-      <p className="page-subtitle">Nhap ma hoa don Kiot, khach, hang, COD va lich gui. Anh/PDF hoa don chi la chung tu trong chi tiet don.</p>
+      <h1 className="page-title">Tạo đơn vận hành</h1>
+      <p className="page-subtitle">Nhập mã hóa đơn Kiot, khách, hàng, COD và lịch gửi. Ảnh/PDF hóa đơn chỉ là chứng từ trong chi tiết đơn.</p>
       <Card>
         <OrderEntryForm />
       </Card>
