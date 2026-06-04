@@ -82,7 +82,7 @@ export function KanbanBoard() {
       <Alert
         type="info"
         showIcon
-        message="Kanban chi doi trang thai van hanh. Hoa don, doanh thu, khach va cong no van doi soat tren Kiot."
+        title="Kanban chi doi trang thai van hanh. Hoa don, doanh thu, khach va cong no van doi soat tren Kiot."
         style={{ marginBottom: 12 }}
       />
       {board}

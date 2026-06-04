@@ -25,7 +25,7 @@ export default function DashboardPage() {
     <main>
       <h1 className="page-title">Tong quan van hanh</h1>
       <p className="page-subtitle">Kiot giu hoa don, doanh thu, khach va cong no. App nay giu tien do giao hang, giu ton, COD va doi soat.</p>
-      <Alert type="warning" showIcon message="Moi card phai co ma hoa don Kiot nhu HD004066 truoc khi doi soat ngay." style={{ marginBottom: 14 }} />
+      <Alert type="warning" showIcon title="Moi card phai co ma hoa don Kiot nhu HD004066 truoc khi doi soat ngay." style={{ marginBottom: 14 }} />
       <Row gutter={[12, 12]}>
         <Col xs={12} lg={6}><Card><Statistic title="Don can dong" value={5} /></Card></Col>
         <Col xs={12} lg={6}><Card><Statistic title="Cho xe" value={3} /></Card></Col>
