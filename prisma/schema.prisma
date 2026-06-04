@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  draft
+  awaiting_kiot
+  kiot_linked
+  reserved
+  packing
+  packed
+  waiting_vehicle
+  scheduled
+  shipped
+  delivered
+  problem
+  cancelled
+  returned
+}
+
+enum InventoryMovementType {
+  purchase_in
+  manual_adjustment
+  reserve
+  release_reservation
+  ship
+  return_in
+  damage_out
+}
+
+enum ReconciliationStatus {
+  open
+  resolved
+}
+
+model Product {
+  id                String              @id @default(cuid())
+  sku               String              @unique
+  name              String
+  unit              String
+  defaultPrice      Int
+  packageRule       String?
+  aliases           ProductAlias[]
+  orderItems        OrderItem[]
+  inventoryMovement InventoryMovement[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("products")
+}
+
+model ProductAlias {
+  id        String  @id @default(cuid())
+  value     String
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, value])
+  @@map("product_aliases")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  province  String?
+  note      String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customers")
+}
+
+model Order {
+  id              String                @id @default(cuid())
+  code            String                @unique
+  kiotInvoiceCode String?               @unique
+  sourceChannel   String
+  status          OrderStatus           @default(awaiting_kiot)
+  customerId      String?
+  customerName    String
+  customerPhone   String?
+  province        String?
+  codAmount       Int                   @default(0)
+  promisedSendAt  DateTime?
+  note            String?
+  rawChat         String?
+  customer        Customer?             @relation(fields: [customerId], references: [id])
+  items           OrderItem[]
+  shipments       Shipment[]
+  auditLogs       AuditLog[]
+  issues          ReconciliationIssue[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Decimal @db.Decimal(12, 2)
+  unitPrice Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Shipment {
+  id           String   @id @default(cuid())
+  orderId      String
+  driverName   String?
+  carrierName  String?
+  vehicleCode  String?
+  sendDate     DateTime?
+  codCollected Int      @default(0)
+  note         String?
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("shipments")
+}
+
+model InventoryMovement {
+  id        String                @id @default(cuid())
+  productId String
+  orderId   String?
+  type      InventoryMovementType
+  quantity  Decimal               @db.Decimal(12, 2)
+  note      String?
+  product   Product               @relation(fields: [productId], references: [id])
+  createdAt DateTime              @default(now())
+
+  @@map("inventory_movements")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  orderId   String?
+  actor     String
+  action    String
+  reason    String?
+  metadata  Json?
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model ReconciliationIssue {
+  id              String               @id @default(cuid())
+  orderId          String?
+  kiotInvoiceCode String
+  customerName     String?
+  mismatchType     String
+  requiredAction   String
+  resolutionNote   String?
+  status           ReconciliationStatus @default(open)
+  order            Order?               @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@map("reconciliation_issues")
+}

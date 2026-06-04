@@ -1,0 +1,9 @@
+.next/
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.superpowers/
+*.tsbuildinfo
+tool_events.jsonl
