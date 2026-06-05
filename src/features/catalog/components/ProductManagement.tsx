@@ -1,7 +1,8 @@
 "use client";
 
-import { EditOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
-import { Button, Form, Input, InputNumber, Modal, Space, Table, Tag, Typography, message } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined, UploadOutlined } from "@ant-design/icons";
+import { Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Table, Tag, Typography, Upload, message } from "antd";
+import type { UploadFile } from "antd/es/upload/interface";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
@@ -12,6 +13,7 @@ export function ProductManagement() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ProductRow | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [form] = Form.useForm<ProductRow & { aliasesText: string }>();
 
   useEffect(() => {
@@ -20,6 +22,12 @@ export function ProductManagement() {
 
   const columns: ColumnsType<ProductRow> = useMemo(
     () => [
+      {
+        title: "Ảnh",
+        dataIndex: "imageUrl",
+        width: 72,
+        render: (value?: string) => value ? <Image src={value} alt="Ảnh sản phẩm" width={44} height={44} style={{ objectFit: "cover", borderRadius: 6 }} /> : <div className="image-placeholder">Ảnh</div>
+      },
       { title: "Sản phẩm", dataIndex: "name", fixed: "left", width: 260 },
       { title: "Giá", dataIndex: "defaultPrice", align: "right", render: (value) => `${Number(value).toLocaleString("vi-VN")}đ` },
       { title: "Đơn vị", dataIndex: "unit", width: 90 },
@@ -32,11 +40,18 @@ export function ProductManagement() {
       },
       {
         title: "Thao tác",
-        width: 120,
+        width: 180,
         render: (_, row) => (
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>
-            Sửa
-          </Button>
+          <Space>
+            <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>
+              Sửa
+            </Button>
+            <Popconfirm title="Xóa sản phẩm này?" okText="Xóa" cancelText="Đóng" onConfirm={() => deleteProduct(row)}>
+              <Button size="small" danger icon={<DeleteOutlined />}>
+                Xóa
+              </Button>
+            </Popconfirm>
+          </Space>
         )
       }
     ],
@@ -54,6 +69,7 @@ export function ProductManagement() {
   function openEdit(row?: ProductRow) {
     const next = row ?? { key: crypto.randomUUID(), id: crypto.randomUUID(), sku: "", name: "", unit: "bao", defaultPrice: 0, packageRule: "", weightPerUnitKg: 0, aliases: [] };
     setEditing(next);
+    setImageUrl(next.imageUrl);
     form.setFieldsValue({ ...next, aliasesText: next.aliases.map((alias) => alias.value).join(", ") });
   }
 
@@ -66,6 +82,7 @@ export function ProductManagement() {
       unit: values.unit,
       defaultPrice: Number(values.defaultPrice ?? 0),
       packageRule: values.packageRule,
+      imageUrl,
       weightPerUnitKg: Number(values.weightPerUnitKg ?? 0),
       aliases: String(values.aliasesText ?? "")
         .split(",")
@@ -87,6 +104,23 @@ export function ProductManagement() {
     message.success("Đã lưu sản phẩm vào database");
   }
 
+  async function deleteProduct(row: ProductRow) {
+    const response = await fetch(`/api/products/${row.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Không xóa được sản phẩm" }));
+      message.error(error.error ?? "Không xóa được sản phẩm");
+      return;
+    }
+    await loadProducts();
+    message.success("Đã xóa sản phẩm khỏi database");
+  }
+
+  async function beforeUpload(file: UploadFile | File) {
+    const dataUrl = await fileToDataUrl(file as File);
+    setImageUrl(dataUrl);
+    return false;
+  }
+
   return (
     <div>
       <div className="section-toolbar">
@@ -95,9 +129,17 @@ export function ProductManagement() {
           Thêm sản phẩm
         </Button>
       </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={products} pagination={{ pageSize: 10 }} scroll={{ x: 1100 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={products} pagination={false} scroll={{ x: 1180, y: 620 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm sản phẩm"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveProduct} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
+          <Form.Item label="Ảnh sản phẩm">
+            <Space align="start">
+              {imageUrl ? <Image src={imageUrl} alt="Ảnh sản phẩm" width={86} height={86} style={{ objectFit: "cover", borderRadius: 8 }} /> : <div className="upload-preview-empty">Chưa có ảnh</div>}
+              <Upload accept="image/*" showUploadList={false} beforeUpload={beforeUpload}>
+                <Button icon={<UploadOutlined />}>Upload ảnh</Button>
+              </Upload>
+            </Space>
+          </Form.Item>
           <Form.Item label="Tên sản phẩm" name="name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item label="Mã/SKU" name="sku"><Input /></Form.Item>
           <Space.Compact style={{ width: "100%" }}>
@@ -111,4 +153,13 @@ export function ProductManagement() {
       </Modal>
     </div>
   );
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

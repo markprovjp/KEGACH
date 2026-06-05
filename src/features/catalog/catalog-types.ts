@@ -9,6 +9,7 @@ export type CatalogProduct = {
   unit: string;
   defaultPrice: number;
   packageRule?: string;
+  imageUrl?: string;
   weightPerUnitKg?: number;
   aliases: ProductAlias[];
 };

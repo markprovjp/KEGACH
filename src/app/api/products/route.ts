@@ -13,6 +13,7 @@ export async function GET() {
     unit: product.unit,
     defaultPrice: product.defaultPrice,
     packageRule: product.packageRule,
+    imageUrl: product.imageUrl,
     weightPerUnitKg: product.weightPerUnitKg,
     aliases: product.aliases.map((alias) => ({ value: alias.value }))
   })));
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       unit: body.unit,
       defaultPrice: Number(body.defaultPrice ?? 0),
       packageRule: body.packageRule || null,
+      imageUrl: body.imageUrl || null,
       weightPerUnitKg: Number(body.weightPerUnitKg ?? 0),
       aliases: {
         deleteMany: {},
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
       unit: body.unit,
       defaultPrice: Number(body.defaultPrice ?? 0),
       packageRule: body.packageRule || null,
+      imageUrl: body.imageUrl || null,
       weightPerUnitKg: Number(body.weightPerUnitKg ?? 0),
       aliases: {
         create: (body.aliases ?? []).map((alias: { value: string }) => ({ value: alias.value }))
@@ -55,6 +58,7 @@ export async function POST(request: Request) {
     unit: product.unit,
     defaultPrice: product.defaultPrice,
     packageRule: product.packageRule,
+    imageUrl: product.imageUrl,
     weightPerUnitKg: product.weightPerUnitKg,
     aliases: product.aliases.map((alias) => ({ value: alias.value }))
   });

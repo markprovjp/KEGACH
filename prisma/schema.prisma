@@ -45,6 +45,7 @@ model Product {
   unit              String
   defaultPrice      Int
   packageRule       String?
+  imageUrl          String?
   aliases           ProductAlias[]
   orderItems        OrderItem[]
   inventoryMovement InventoryMovement[]

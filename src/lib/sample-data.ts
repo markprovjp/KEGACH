@@ -26,7 +26,8 @@ export const sampleProducts: CatalogProduct[] = [
   { id: "kich-gach", name: "Kích gạch", unit: "cái", defaultPrice: 30000, packageRule: "40 cái / thùng", aliases: [{ value: "kích gạch" }] },
   { id: "ban-keo-rang-cua", name: "Bàn kéo răng cưa", unit: "cái", defaultPrice: 90000, packageRule: undefined, aliases: [{ value: "bàn kéo" }] },
   { id: "bay-rang-cua", name: "Bay răng cưa", unit: "cái", defaultPrice: 45000, packageRule: undefined, aliases: [{ value: "bay" }] },
-  { id: "mu-chiet-mach", name: "Mủ chiết mạch", unit: "cái", defaultPrice: 12000, packageRule: undefined, aliases: [{ value: "mủ chiết mạch" }] }
+  { id: "mu-chiet-mach", name: "Mủ chiết mạch", unit: "cái", defaultPrice: 12000, packageRule: undefined, weightPerUnitKg: 1, aliases: [{ value: "mủ chiết mạch" }] },
+  { id: "sung-dien-full-bo", name: "Súng điện full bộ", unit: "bộ", defaultPrice: 1300000, packageRule: "1 bộ", weightPerUnitKg: 5, aliases: [{ value: "súng điện" }, { value: "sung dien" }, { value: "súng điện full bộ" }] }
 ];
 
 export type SampleCustomer = {
@@ -83,9 +84,9 @@ export const inventorySeeds: InventoryRowSeed[] = sampleProducts.map((product, i
   productId: product.id,
   product: product.name,
   unit: product.unit,
-  onHand: [120, 84, 96, 64, 24, 16, 52, 44, 38, 33, 28, 18, 22, 36, 30, 27, 11, 14, 12, 40, 33, 20, 9, 15, 10][index] ?? 20,
-  reserved: [18, 8, 12, 9, 12, 3, 5, 4, 2, 6, 8, 2, 1, 6, 4, 3, 1, 0, 0, 3, 4, 2, 1, 0, 0][index] ?? 0,
-  lowStockThreshold: [40, 40, 40, 40, 20, 8, 25, 25, 25, 25, 25, 12, 12, 18, 10, 10, 5, 5, 5, 8, 8, 8, 5, 5, 5][index] ?? 5,
+  onHand: [120, 84, 96, 64, 24, 16, 52, 44, 38, 33, 28, 18, 22, 36, 30, 27, 11, 14, 12, 40, 33, 20, 9, 15, 10, 2][index] ?? 20,
+  reserved: [18, 8, 12, 9, 12, 3, 5, 4, 2, 6, 8, 2, 1, 6, 4, 3, 1, 0, 0, 3, 4, 2, 1, 0, 0, 0][index] ?? 0,
+  lowStockThreshold: [40, 40, 40, 40, 20, 8, 25, 25, 25, 25, 25, 12, 12, 18, 10, 10, 5, 5, 5, 8, 8, 8, 5, 5, 5, 1][index] ?? 5,
   lastMovement: index % 3 === 0 ? "giữ hàng HD004066" : index % 3 === 1 ? "nhập mua" : "xuất giao HD004082"
 }));
 

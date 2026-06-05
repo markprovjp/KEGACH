@@ -8,7 +8,7 @@ import {
   DatabaseOutlined,
   PlusCircleOutlined
 } from "@ant-design/icons";
-import { Layout, Menu, Typography } from "antd";
+import { Layout, Menu } from "antd";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type React from "react";
@@ -32,16 +32,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <Layout className="page-shell">
       <Sider width={236} theme="light">
         <div style={{ padding: 18 }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            KeGach Ops
-          </Typography.Title>
-          <Typography.Text type="secondary">Kiot là sổ cái, app là vận hành</Typography.Text>
+          <h2 className="brand-title">KeGach Ops</h2>
+          <div className="brand-subtitle">Kiot là sổ cái, app là vận hành</div>
         </div>
         <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
       </Sider>
       <Layout>
         <Header style={{ background: "#fff", borderBottom: "1px solid #e4e7ec", height: 56, padding: "0 20px" }}>
-          <Typography.Text strong>Long Hải Plastic Operations</Typography.Text>
+          <strong>Long Hải Plastic Operations</strong>
         </Header>
         <Content className="content-shell">{children}</Content>
       </Layout>
