@@ -22,9 +22,10 @@ const cat: CatalogProduct = {
 
 describe("product search helpers", () => {
   it("adds keo variant codes to searchable text", () => {
+    expect(buildProductSearchText(bonbond)).toContain("b01");
     expect(buildProductSearchText(bonbond)).toContain("b02");
     expect(buildProductSearchText(cat)).toContain("cat01");
-    expect(buildProductSearchText(cat)).toContain("b01");
+    expect(buildProductSearchText(cat)).not.toContain("b01");
   });
 
   it("renders readable variant stock labels", () => {

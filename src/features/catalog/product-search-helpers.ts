@@ -7,6 +7,7 @@ export function buildProductSearchText(product: CatalogProduct): string {
 
 export function buildProductSearchTokens(product: CatalogProduct): string[] {
   const tokens = [product.id, product.sku, product.name, ...product.aliases.map((alias) => alias.value)];
+  tokens.push(...buildProductFamilyCodes(product));
   for (const variant of product.variants ?? []) {
     tokens.push(...buildVariantSearchTokens(product, variant));
   }
@@ -22,7 +23,7 @@ export function buildVariantLabel(product: CatalogProduct): string {
 export function buildVariantSearchTokens(product: CatalogProduct, variant: ProductVariant): string[] {
   const code = String(variant.code).trim();
   const numeric = code.match(/\d+/)?.[0]?.padStart(2, "0");
-  const prefixes = product.name.toLowerCase().includes("cat") ? ["cat", "c", "b"] : ["b", "bonbond"];
+  const prefixes = product.name.toLowerCase().includes("cat") ? ["cat"] : ["b", "bonbond"];
   const aliases = [code, code.toLowerCase(), code.toUpperCase()];
 
   if (numeric) {
@@ -31,6 +32,20 @@ export function buildVariantSearchTokens(product: CatalogProduct, variant: Produ
 
   aliases.push(buildVariantDisplay(product, variant));
   return aliases;
+}
+
+function buildProductFamilyCodes(product: CatalogProduct): string[] {
+  const name = product.name.toLowerCase();
+  if (name.includes("bonbond")) return rangeCodes("b", 1, 14);
+  if (name.includes("cat")) return rangeCodes("cat", 1, 13);
+  return [];
+}
+
+function rangeCodes(prefix: string, from: number, to: number): string[] {
+  return Array.from({ length: to - from + 1 }, (_, index) => {
+    const code = String(from + index).padStart(2, "0");
+    return `${prefix}${code}`;
+  });
 }
 
 function buildVariantDisplay(product: CatalogProduct, variant: ProductVariant): string {

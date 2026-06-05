@@ -2,7 +2,7 @@
 
 import { Select } from "antd";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
-import { buildProductSearchText, buildVariantLabel } from "@/features/catalog/product-search-helpers";
+import { buildProductSearchText } from "@/features/catalog/product-search-helpers";
 import { compactAlias } from "@/lib/normalize";
 
 export function ProductSearch({ products = [], value, onChange }: { products?: CatalogProduct[]; value?: string; onChange?: (value: string) => void }) {
@@ -15,7 +15,7 @@ export function ProductSearch({ products = [], value, onChange }: { products?: C
       placeholder="Chọn sản phẩm"
       options={products.map((product) => ({
         value: product.id,
-        label: `${product.name} - ${product.defaultPrice.toLocaleString("vi-VN")}đ/${product.unit}${buildVariantLabel(product) ? ` - mã ${buildVariantLabel(product)}` : ""}`,
+        label: `${product.name} - ${product.defaultPrice.toLocaleString("vi-VN")}đ/${product.unit}`,
         searchText: buildProductSearchText(product)
       }))}
     />

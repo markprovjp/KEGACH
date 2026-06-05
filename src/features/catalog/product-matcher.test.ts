@@ -22,10 +22,10 @@ describe("product matcher", () => {
   });
 
   it("matches keo variant codes without breaking existing B aliases", () => {
-    const result = parseProductLines("B01 = 1 thung\nB03 = 3t", products);
+    const result = parseProductLines("CAT01 = 1 thung\nB03 = 3t", products);
 
     expect(result.matched).toEqual([
-      expect.objectContaining({ productId: "keo-epoxy-cat", quantity: 1, rawLine: "B01 = 1 thung" }),
+      expect.objectContaining({ productId: "keo-epoxy-cat", quantity: 1, rawLine: "CAT01 = 1 thung" }),
       expect.objectContaining({ productId: "ke-can-bang-3mm", quantity: 3, rawLine: "B03 = 3t" })
     ]);
   });
