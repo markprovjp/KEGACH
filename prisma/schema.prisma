@@ -47,6 +47,7 @@ model Product {
   packageRule       String?
   imageUrl          String?
   aliases           ProductAlias[]
+  variants          ProductVariant[]
   orderItems        OrderItem[]
   inventoryMovement InventoryMovement[]
   weightPerUnitKg   Float               @default(0)
@@ -64,6 +65,19 @@ model ProductAlias {
 
   @@unique([productId, value])
   @@map("product_aliases")
+}
+
+model ProductVariant {
+  id          String  @id @default(cuid())
+  productId   String
+  code        String
+  cartonCount Int     @default(0)
+  tubeCount   Int     @default(0)
+  note        String?
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, code])
+  @@map("product_variants")
 }
 
 model Customer {

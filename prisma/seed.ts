@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { carrierSeeds, inventorySeeds, sampleProducts } from "../src/lib/sample-data";
+import { carrierSeeds, inventorySeeds, productVariantSeeds, sampleProducts } from "../src/lib/sample-data";
 
 const prisma = new PrismaClient();
 
@@ -16,6 +16,12 @@ async function main() {
         aliases: {
           deleteMany: {},
           create: product.aliases.map((alias) => ({ value: alias.value }))
+        },
+        variants: {
+          deleteMany: {},
+          create: productVariantSeeds
+            .filter((variant) => variant.productId === product.id)
+            .map((variant) => ({ code: variant.code, cartonCount: variant.cartonCount, tubeCount: variant.tubeCount }))
         }
       },
       create: {
@@ -27,6 +33,11 @@ async function main() {
         weightPerUnitKg: estimateWeightKg(product.packageRule, product.unit),
         aliases: {
           create: product.aliases.map((alias) => ({ value: alias.value }))
+        },
+        variants: {
+          create: productVariantSeeds
+            .filter((variant) => variant.productId === product.id)
+            .map((variant) => ({ code: variant.code, cartonCount: variant.cartonCount, tubeCount: variant.tubeCount }))
         }
       }
     });

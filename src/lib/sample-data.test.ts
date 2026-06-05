@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { carrierSeeds, sampleProducts } from "./sample-data";
+import { carrierSeeds, productVariantSeeds, sampleProducts } from "./sample-data";
 
 describe("business sample data", () => {
   it("contains the full approved product list with Vietnamese names", () => {
@@ -16,5 +16,12 @@ describe("business sample data", () => {
     expect(carrierSeeds.map((carrier) => carrier.name)).toContain("Huy bưu điện (GHN)");
     expect(carrierSeeds.map((carrier) => carrier.name)).toContain("Xe Hòa Phát");
     expect(carrierSeeds.map((carrier) => carrier.name)).toContain("Anh Ngọc");
+  });
+
+  it("contains BONBOND and EPOXY CAT variants", () => {
+    expect(productVariantSeeds.filter((variant) => variant.productId === "keo-bonbond")).toHaveLength(12);
+    expect(productVariantSeeds.filter((variant) => variant.productId === "keo-epoxy-cat")).toHaveLength(13);
+    expect(productVariantSeeds).toContainEqual({ productId: "keo-bonbond", code: "B14", cartonCount: 50, tubeCount: 29 });
+    expect(productVariantSeeds).toContainEqual({ productId: "keo-epoxy-cat", code: "11", cartonCount: 19, tubeCount: 20 });
   });
 });

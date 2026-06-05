@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 export async function GET() {
   const products = await prisma.product.findMany({
-    include: { aliases: true },
+    include: { aliases: true, variants: { orderBy: { code: "asc" } } },
     orderBy: { name: "asc" }
   });
   return NextResponse.json(products.map((product) => ({
@@ -15,7 +15,8 @@ export async function GET() {
     packageRule: product.packageRule,
     imageUrl: product.imageUrl,
     weightPerUnitKg: product.weightPerUnitKg,
-    aliases: product.aliases.map((alias) => ({ value: alias.value }))
+    aliases: product.aliases.map((alias) => ({ value: alias.value })),
+    variants: product.variants.map((variant) => ({ code: variant.code, cartonCount: variant.cartonCount, tubeCount: variant.tubeCount, note: variant.note ?? undefined }))
   })));
 }
 
@@ -34,6 +35,15 @@ export async function POST(request: Request) {
       aliases: {
         deleteMany: {},
         create: (body.aliases ?? []).map((alias: { value: string }) => ({ value: alias.value }))
+      },
+      variants: {
+        deleteMany: {},
+        create: (body.variants ?? []).map((variant: { code: string; cartonCount: number; tubeCount: number; note?: string }) => ({
+          code: variant.code,
+          cartonCount: Number(variant.cartonCount ?? 0),
+          tubeCount: Number(variant.tubeCount ?? 0),
+          note: variant.note || null
+        }))
       }
     },
     create: {
@@ -46,9 +56,17 @@ export async function POST(request: Request) {
       weightPerUnitKg: Number(body.weightPerUnitKg ?? 0),
       aliases: {
         create: (body.aliases ?? []).map((alias: { value: string }) => ({ value: alias.value }))
+      },
+      variants: {
+        create: (body.variants ?? []).map((variant: { code: string; cartonCount: number; tubeCount: number; note?: string }) => ({
+          code: variant.code,
+          cartonCount: Number(variant.cartonCount ?? 0),
+          tubeCount: Number(variant.tubeCount ?? 0),
+          note: variant.note || null
+        }))
       }
     },
-    include: { aliases: true }
+    include: { aliases: true, variants: { orderBy: { code: "asc" } } }
   });
 
   return NextResponse.json({
@@ -60,7 +78,8 @@ export async function POST(request: Request) {
     packageRule: product.packageRule,
     imageUrl: product.imageUrl,
     weightPerUnitKg: product.weightPerUnitKg,
-    aliases: product.aliases.map((alias) => ({ value: alias.value }))
+    aliases: product.aliases.map((alias) => ({ value: alias.value })),
+    variants: product.variants.map((variant) => ({ code: variant.code, cartonCount: variant.cartonCount, tubeCount: variant.tubeCount, note: variant.note ?? undefined }))
   });
 }
 

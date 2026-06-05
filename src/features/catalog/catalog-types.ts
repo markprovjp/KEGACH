@@ -2,6 +2,13 @@ export type ProductAlias = {
   value: string;
 };
 
+export type ProductVariant = {
+  code: string;
+  cartonCount: number;
+  tubeCount: number;
+  note?: string;
+};
+
 export type CatalogProduct = {
   id: string;
   sku?: string;
@@ -12,6 +19,7 @@ export type CatalogProduct = {
   imageUrl?: string;
   weightPerUnitKg?: number;
   aliases: ProductAlias[];
+  variants?: ProductVariant[];
 };
 
 export type ParsedOrderLine = {
