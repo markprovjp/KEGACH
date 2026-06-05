@@ -1,12 +1,11 @@
 "use client";
 
-import { EditOutlined, PhoneOutlined, PlusOutlined, SaveOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Modal, Space, Table, Tag, Typography, message } from "antd";
+import { DeleteOutlined, EditOutlined, PhoneOutlined, PlusOutlined, SaveOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import type { CarrierSeed } from "@/lib/sample-data";
 
-type CarrierRow = CarrierSeed & { key: string };
+type CarrierRow = { id: string; key: string; name: string; phone: string; route: string; note?: string | null };
 type DispatchOrder = { id: string; kiotInvoiceCode: string; province: string; driver?: string; status: string };
 
 export function DispatchBoard() {
@@ -35,11 +34,14 @@ export function DispatchBoard() {
     { title: "Ghi chú", dataIndex: "note" },
     {
       title: "Thao tác",
-      width: 120,
+      width: 170,
       render: (_, row) => (
-        <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>
-          Sửa
-        </Button>
+        <Space>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>Sửa</Button>
+          <Popconfirm title="Xóa nhà xe này?" okText="Xóa" cancelText="Đóng" onConfirm={() => deleteCarrier(row)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       )
     }
   ];
@@ -48,7 +50,7 @@ export function DispatchBoard() {
     setLoading(true);
     const response = await fetch("/api/carriers");
     const data = await response.json();
-    setCarriers(data.map((carrier: CarrierSeed) => ({ ...carrier, key: carrier.id })));
+    setCarriers(data.map((carrier: CarrierRow) => ({ ...carrier, key: carrier.id })));
     setLoading(false);
   }
 
@@ -73,6 +75,16 @@ export function DispatchBoard() {
     await loadCarriers();
     setEditing(null);
     message.success("Đã lưu nhà xe vào database");
+  }
+
+  async function deleteCarrier(row: CarrierRow) {
+    const response = await fetch(`/api/carriers/${row.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      message.error("Không xóa được nhà xe");
+      return;
+    }
+    setCarriers((current) => current.filter((carrier) => carrier.id !== row.id));
+    message.success("Đã xóa nhà xe khỏi database");
   }
 
   return (

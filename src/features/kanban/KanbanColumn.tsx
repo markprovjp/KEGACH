@@ -5,7 +5,7 @@ import { Typography } from "antd";
 import { KanbanOrderCard } from "./KanbanOrderCard";
 import type { KanbanColumnDefinition, KanbanOrder } from "./kanban-types";
 
-export function KanbanColumn({ column, orders }: { column: KanbanColumnDefinition; orders: KanbanOrder[] }) {
+export function KanbanColumn({ column, orders, onEdit, onDelete }: { column: KanbanColumnDefinition; orders: KanbanOrder[]; onEdit: (order: KanbanOrder) => void; onDelete: (order: KanbanOrder) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.status });
 
   return (
@@ -15,7 +15,7 @@ export function KanbanColumn({ column, orders }: { column: KanbanColumnDefinitio
         <Typography.Text type="secondary">{orders.length}</Typography.Text>
       </div>
       {orders.map((order) => (
-        <KanbanOrderCard key={order.id} order={order} />
+        <KanbanOrderCard key={order.id} order={order} onEdit={onEdit} onDelete={onDelete} />
       ))}
     </section>
   );

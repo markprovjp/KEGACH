@@ -1,12 +1,12 @@
 "use client";
 
-import { PhoneOutlined, WarningOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PhoneOutlined, WarningOutlined } from "@ant-design/icons";
 import { useDraggable } from "@dnd-kit/core";
-import { Badge, Card, Tag, Typography } from "antd";
+import { Badge, Button, Card, Popconfirm, Space, Tag, Typography } from "antd";
 import { orderStatusLabels } from "@/features/orders/order-status";
 import type { KanbanOrder } from "./kanban-types";
 
-export function KanbanOrderCard({ order }: { order: KanbanOrder }) {
+export function KanbanOrderCard({ order, onEdit, onDelete }: { order: KanbanOrder; onEdit: (order: KanbanOrder) => void; onDelete: (order: KanbanOrder) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: order.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, opacity: isDragging ? 0.5 : 1 } : undefined;
 
@@ -32,7 +32,15 @@ export function KanbanOrderCard({ order }: { order: KanbanOrder }) {
           {warning}
         </Tag>
       ))}
-      <Tag color="blue" style={{ marginTop: 6 }}>{orderStatusLabels[order.status]}</Tag>
+      <div className="card-line" style={{ marginTop: 6 }}>
+        <Tag color="blue">{orderStatusLabels[order.status]}</Tag>
+        <Space onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => onEdit(order)}>Sửa</Button>
+          <Popconfirm title="Xóa đơn này?" okText="Xóa" cancelText="Đóng" onConfirm={() => onDelete(order)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      </div>
     </Card>
   );
 }

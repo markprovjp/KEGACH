@@ -2,9 +2,8 @@
 
 import { Select } from "antd";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
-import { sampleProducts } from "@/lib/sample-data";
 
-export function ProductSearch({ products = sampleProducts, value, onChange }: { products?: CatalogProduct[]; value?: string; onChange?: (value: string) => void }) {
+export function ProductSearch({ products = [], value, onChange }: { products?: CatalogProduct[]; value?: string; onChange?: (value: string) => void }) {
   return (
     <Select
       showSearch
@@ -12,7 +11,7 @@ export function ProductSearch({ products = sampleProducts, value, onChange }: { 
       onChange={onChange}
       optionFilterProp="label"
       placeholder="Chọn sản phẩm"
-      options={sampleProducts.map((product) => ({
+      options={products.map((product) => ({
         value: product.id,
         label: `${product.name} - ${product.defaultPrice.toLocaleString("vi-VN")}đ/${product.unit}`
       }))}

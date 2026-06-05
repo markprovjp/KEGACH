@@ -13,6 +13,7 @@ export async function GET() {
   return NextResponse.json(orders.map((order) => ({
     id: order.id,
     code: order.code,
+    createdAt: order.createdAt.toISOString(),
     kiotInvoiceCode: order.kiotInvoiceCode ?? "Chưa gắn Kiot",
     customer: order.customerName,
     phone: order.customerPhone ?? "-",
@@ -22,12 +23,16 @@ export async function GET() {
     province: order.province ?? "-",
     sendDate: order.promisedSendAt?.toISOString().slice(0, 10) ?? "Chưa hẹn",
     driver: order.shipments[0]?.carrierName ?? order.shipments[0]?.driverName ?? undefined,
+    carrierName: order.shipments[0]?.carrierName ?? undefined,
+    driverName: order.shipments[0]?.driverName ?? undefined,
     warnings: order.paymentKind === "debt" ? ["Công nợ"] : [],
     status: order.status,
     paymentKind: order.paymentKind,
     deliveryMode: order.shipments[0]?.deliveryMode,
+    freightPayer: order.shipments[0]?.freightPayer,
     packageCount: order.shipments[0]?.packageCount ?? 0,
-    estimatedWeightKg: order.shipments[0]?.estimatedWeightKg ?? 0
+    estimatedWeightKg: order.shipments[0]?.estimatedWeightKg ?? 0,
+    note: order.note ?? undefined
   })));
 }
 
@@ -36,6 +41,7 @@ export async function POST(request: Request) {
   const existing = body.kiotInvoiceCode ? await prisma.order.findUnique({ where: { kiotInvoiceCode: body.kiotInvoiceCode } }) : null;
   if (existing) return NextResponse.json({ error: "Hóa đơn Kiot đã tồn tại" }, { status: 409 });
 
+  const customer = await resolveCustomer(body);
   const count = await prisma.order.count();
   const order = await prisma.order.create({
     data: {
@@ -43,6 +49,7 @@ export async function POST(request: Request) {
       kiotInvoiceCode: body.kiotInvoiceCode || null,
       sourceChannel: body.sourceChannel || "kiot_print",
       status: body.kiotInvoiceCode ? "kiot_linked" : "awaiting_kiot",
+      customerId: customer?.id,
       customerName: body.customerName || "Khách lẻ",
       customerPhone: body.customerPhone || null,
       codAmount: Number(body.codAmount ?? 0),
@@ -69,4 +76,18 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(order);
+}
+
+async function resolveCustomer(body: { customerId?: string; customerName?: string; customerPhone?: string; province?: string; note?: string }) {
+  if (body.customerId) return prisma.customer.findUnique({ where: { id: body.customerId } });
+  const name = body.customerName?.trim();
+  if (!name) return null;
+  return prisma.customer.create({
+    data: {
+      name,
+      phone: body.customerPhone || null,
+      province: body.province || null,
+      note: body.note || null
+    }
+  });
 }
