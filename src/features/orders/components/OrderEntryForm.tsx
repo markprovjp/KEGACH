@@ -4,6 +4,7 @@ import { FileTextOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons"
 import { Button, DatePicker, Form, Input, InputNumber, Select, Space, Table, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { ProductSearch } from "@/features/catalog/components/ProductSearch";
 import { CustomerSearch } from "@/features/customers/components/CustomerSearch";
@@ -69,6 +70,7 @@ export function OrderEntryForm() {
   const [lines, setLines] = useState<Line[]>([]);
   const [rawText, setRawText] = useState(defaultInvoiceText);
   const [saving, setSaving] = useState(false);
+  const [linePageSize, setLinePageSize] = useState<PageSizeValue>(10);
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
 
   useEffect(() => {
@@ -198,7 +200,8 @@ export function OrderEntryForm() {
         <Form.Item label="Khối lượng ước tính (kg)" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
       </div>
 
-      <Table rowKey="key" size="small" pagination={false} columns={columns} dataSource={lines} />
+      <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
+      <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length)} columns={columns} dataSource={lines} />
       <Button icon={<PlusOutlined />} onClick={addLine} style={{ marginTop: 10 }}>Thêm dòng</Button>
 
       <Form.Item label="Ghi chú nội bộ" name="note" style={{ marginTop: 12 }}><Input.TextArea rows={3} /></Form.Item>

@@ -77,6 +77,25 @@ a {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.page-size-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 10px;
+  min-width: 260px;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .chart-grid {
@@ -183,7 +202,7 @@ a {
 .kanban-scroll {
   display: flex;
   gap: 12px;
-  min-height: 600px;
+  min-height: 560px;
   overflow-x: auto;
   padding-bottom: 12px;
 }
@@ -194,6 +213,8 @@ a {
   border-radius: 8px;
   background: #f9fafb;
   padding: 10px;
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
 }
 
 .kanban-column-title {
@@ -204,6 +225,66 @@ a {
   margin-bottom: 10px;
   border-radius: 8px;
   background: #fff;
+}
+
+.kanban-ops-panel {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.kanban-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) minmax(170px, 0.8fr) minmax(170px, 0.8fr) minmax(170px, 0.8fr);
+  gap: 8px;
+}
+
+.kanban-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.kanban-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.kanban-summary-card {
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.kanban-summary-card b {
+  display: block;
+  font-size: 18px;
+}
+
+.kanban-column-more {
+  border-top: 1px dashed #d0d5dd;
+  color: #667085;
+  font-size: 12px;
+  padding-top: 8px;
+  text-align: center;
+}
+
+.kanban-card.compact-card .ant-card-body {
+  padding: 8px;
+}
+
+.kanban-card.compact-card .muted,
+.kanban-card.compact-card .kanban-product-summary {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .static-card {
@@ -246,5 +327,15 @@ a {
   .section-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .page-size-control {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .kanban-ops-panel,
+  .kanban-filter-grid {
+    grid-template-columns: 1fr;
   }
 }

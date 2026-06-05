@@ -4,6 +4,7 @@ import { CheckOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined
 import { Button, Form, Input, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 
 type ReconciliationRow = {
   key: string;
@@ -24,6 +25,7 @@ export function ReconciliationTable() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ReconciliationRow | null>(null);
   const [mode, setMode] = useState<"edit" | "resolve">("edit");
+  const [pageSize, setPageSize] = useState<PageSizeValue>(10);
   const [form] = Form.useForm<ReconciliationRow>();
 
   useEffect(() => {
@@ -128,9 +130,10 @@ export function ReconciliationTable() {
     <>
       <div className="section-toolbar">
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm dòng đối soát</Button>
+        <PageSizeControl total={rows.length} value={pageSize} onChange={setPageSize} />
         <Button onClick={loadRows}>Tải lại</Button>
       </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={rows} pagination={{ pageSize: 12 }} scroll={{ x: 1280 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={rows} pagination={tablePagination(pageSize, rows.length)} scroll={{ x: 1280 }} />
       <Modal title={mode === "resolve" ? `Xử lý ${editing?.kiotInvoiceCode ?? ""}` : editing?.id ? `Sửa ${editing.kiotInvoiceCode}` : "Thêm dòng đối soát"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveRow} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }} width={680}>
         <Form form={form} layout="vertical">
           <div className="form-grid">

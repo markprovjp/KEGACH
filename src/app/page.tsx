@@ -3,6 +3,7 @@
 import { Alert, Card, Col, Row, Statistic, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
+import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import { OperationsCharts } from "@/features/dashboard/OperationsCharts";
 import type { OrderStatus } from "@/features/orders/order-status";
 import { orderStatusLabels } from "@/features/orders/order-status";
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [openIssues, setOpenIssues] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [pageSize, setPageSize] = useState<PageSizeValue>(10);
 
   useEffect(() => {
     setMounted(true);
@@ -56,7 +58,12 @@ export default function DashboardPage() {
       </Row>
       <OperationsCharts orders={orders} />
       <Card title="Đơn đang chạy" style={{ marginTop: 14 }}>
-        {mounted ? <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={orders} pagination={false} scroll={{ x: 900 }} /> : <div className="table-fallback">Đang tải danh sách đơn...</div>}
+        {mounted ? (
+          <>
+            <PageSizeControl total={orders.length} value={pageSize} onChange={setPageSize} />
+            <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={orders} pagination={tablePagination(pageSize, orders.length)} scroll={{ x: 900 }} />
+          </>
+        ) : <div className="table-fallback">Đang tải danh sách đơn...</div>}
       </Card>
     </main>
   );

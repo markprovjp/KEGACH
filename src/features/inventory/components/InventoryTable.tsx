@@ -4,6 +4,7 @@ import { EditOutlined, SaveOutlined } from "@ant-design/icons";
 import { Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 
 type InventoryRow = {
   key: string;
@@ -32,6 +33,7 @@ export function InventoryTable() {
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<InventoryRow | null>(null);
+  const [pageSize, setPageSize] = useState<PageSizeValue>(10);
   const [form] = Form.useForm<{ type: string; quantity: number; note: string }>();
 
   useEffect(() => {
@@ -112,7 +114,8 @@ export function InventoryTable() {
 
   return (
     <>
-      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={rows} pagination={{ pageSize: 10 }} scroll={{ x: 1050 }} />
+      <PageSizeControl total={rows.length} value={pageSize} onChange={setPageSize} />
+      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={rows} pagination={tablePagination(pageSize, rows.length)} scroll={{ x: 1050 }} />
       <Modal title={`Điều chỉnh tồn: ${editing?.product ?? ""}`} open={!!editing} onCancel={() => setEditing(null)} onOk={saveAdjustment} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Loại biến động" name="type"><Select options={movementOptions} /></Form.Item>

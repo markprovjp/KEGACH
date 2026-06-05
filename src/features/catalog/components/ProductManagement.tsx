@@ -5,6 +5,7 @@ import { Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Tabl
 import type { UploadFile } from "antd/es/upload/interface";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
 
 type ProductRow = CatalogProduct & { key: string };
@@ -15,6 +16,7 @@ export function ProductManagement() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [pageSize, setPageSize] = useState<PageSizeValue>(10);
   const [form] = Form.useForm<ProductFormValues>();
 
   useEffect(() => {
@@ -141,7 +143,8 @@ export function ProductManagement() {
           Thêm sản phẩm
         </Button>
       </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={products} pagination={false} scroll={{ x: 1380, y: 620 }} />
+      <PageSizeControl total={products.length} value={pageSize} onChange={setPageSize} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={products} pagination={tablePagination(pageSize, products.length)} scroll={{ x: 1380, y: 620 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm sản phẩm"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveProduct} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Ảnh sản phẩm">

@@ -4,6 +4,7 @@ import { DeleteOutlined, EditOutlined, PhoneOutlined, PlusOutlined, SaveOutlined
 import { Button, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 
 type CarrierRow = { id: string; key: string; name: string; phone: string; route: string; note?: string | null };
 type DispatchOrder = { id: string; kiotInvoiceCode: string; province: string; driver?: string; status: string };
@@ -14,6 +15,7 @@ export function DispatchBoard() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<CarrierRow | null>(null);
+  const [pageSize, setPageSize] = useState<PageSizeValue>(10);
   const [form] = Form.useForm<CarrierRow>();
 
   useEffect(() => {
@@ -108,7 +110,11 @@ export function DispatchBoard() {
         ))}
       </div>
       <Typography.Text type="secondary">Danh bạ nhà xe đang đọc/ghi trực tiếp trong database.</Typography.Text>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filtered} pagination={{ pageSize: 10 }} scroll={{ x: 1000 }} style={{ marginTop: 12 }} />
+      <div className="table-toolbar" style={{ marginTop: 12 }}>
+        <span />
+        <PageSizeControl total={filtered.length} value={pageSize} onChange={setPageSize} />
+      </div>
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filtered} pagination={tablePagination(pageSize, filtered.length)} scroll={{ x: 1000 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm nhà xe"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveCarrier} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Tên nhà xe" name="name" rules={[{ required: true }]}><Input /></Form.Item>
