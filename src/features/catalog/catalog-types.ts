@@ -4,10 +4,12 @@ export type ProductAlias = {
 
 export type CatalogProduct = {
   id: string;
+  sku?: string;
   name: string;
   unit: string;
   defaultPrice: number;
   packageRule?: string;
+  weightPerUnitKg?: number;
   aliases: ProductAlias[];
 };
 

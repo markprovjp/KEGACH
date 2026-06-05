@@ -1,9 +1,10 @@
 "use client";
 
 import { Select } from "antd";
+import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { sampleProducts } from "@/lib/sample-data";
 
-export function ProductSearch({ value, onChange }: { value?: string; onChange?: (value: string) => void }) {
+export function ProductSearch({ products = sampleProducts, value, onChange }: { products?: CatalogProduct[]; value?: string; onChange?: (value: string) => void }) {
   return (
     <Select
       showSearch

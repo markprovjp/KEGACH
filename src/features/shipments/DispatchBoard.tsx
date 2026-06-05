@@ -3,16 +3,21 @@
 import { EditOutlined, PhoneOutlined, PlusOutlined, SaveOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Form, Input, Modal, Space, Table, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useMemo, useState } from "react";
-import { carrierSeeds, sampleOrders, type CarrierSeed } from "@/lib/sample-data";
+import { useEffect, useMemo, useState } from "react";
+import { sampleOrders, type CarrierSeed } from "@/lib/sample-data";
 
 type CarrierRow = CarrierSeed & { key: string };
 
 export function DispatchBoard() {
-  const [carriers, setCarriers] = useState<CarrierRow[]>(carrierSeeds.map((carrier) => ({ ...carrier, key: carrier.id })));
+  const [carriers, setCarriers] = useState<CarrierRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<CarrierRow | null>(null);
   const [form] = Form.useForm<CarrierRow>();
+
+  useEffect(() => {
+    void loadCarriers();
+  }, []);
 
   const filtered = useMemo(() => {
     const normalized = query.toLowerCase().trim();
@@ -36,18 +41,35 @@ export function DispatchBoard() {
     }
   ];
 
+  async function loadCarriers() {
+    setLoading(true);
+    const response = await fetch("/api/carriers");
+    const data = await response.json();
+    setCarriers(data.map((carrier: CarrierSeed) => ({ ...carrier, key: carrier.id })));
+    setLoading(false);
+  }
+
   function openEdit(row?: CarrierRow) {
     const next = row ?? { id: crypto.randomUUID(), key: crypto.randomUUID(), name: "", phone: "", route: "", note: "" };
     setEditing(next);
     form.setFieldsValue(next);
   }
 
-  function saveCarrier() {
+  async function saveCarrier() {
     const values = form.getFieldsValue();
     const saved = { ...editing!, ...values, id: editing!.id, key: editing!.key };
-    setCarriers((current) => (current.some((item) => item.id === saved.id) ? current.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...current]));
+    const response = await fetch("/api/carriers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(saved)
+    });
+    if (!response.ok) {
+      message.error("Không lưu được nhà xe");
+      return;
+    }
+    await loadCarriers();
     setEditing(null);
-    message.success("Đã lưu nhà xe");
+    message.success("Đã lưu nhà xe vào database");
   }
 
   return (
@@ -70,8 +92,8 @@ export function DispatchBoard() {
           </div>
         ))}
       </div>
-      <Typography.Text type="secondary">Danh bạ này sửa được ngay trên màn hình; bản thật sẽ nối database sau.</Typography.Text>
-      <Table rowKey="id" size="small" columns={columns} dataSource={filtered} pagination={{ pageSize: 10 }} scroll={{ x: 1000 }} style={{ marginTop: 12 }} />
+      <Typography.Text type="secondary">Danh bạ nhà xe đang đọc/ghi trực tiếp trong database.</Typography.Text>
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filtered} pagination={{ pageSize: 10 }} scroll={{ x: 1000 }} style={{ marginTop: 12 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm nhà xe"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveCarrier} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Tên nhà xe" name="name" rules={[{ required: true }]}><Input /></Form.Item>

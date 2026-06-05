@@ -4,9 +4,16 @@ import { EditOutlined, SaveOutlined } from "@ant-design/icons";
 import { Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { inventorySeeds } from "@/lib/sample-data";
 
-type InventoryRow = (typeof inventorySeeds)[number] & {
+type InventoryRow = {
+  key: string;
+  productId: string;
+  product: string;
+  unit: string;
+  onHand: number;
+  reserved: number;
+  lowStockThreshold: number;
+  lastMovement: string;
   available: number;
 };
 
@@ -22,12 +29,14 @@ const movementOptions = [
 
 export function InventoryTable() {
   const [mounted, setMounted] = useState(false);
-  const [rows, setRows] = useState(() => inventorySeeds.map(toRow));
+  const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<InventoryRow | null>(null);
   const [form] = Form.useForm<{ type: string; quantity: number; note: string }>();
 
   useEffect(() => {
     setMounted(true);
+    void loadInventory();
   }, []);
 
   const columns: ColumnsType<InventoryRow> = useMemo(
@@ -62,12 +71,19 @@ export function InventoryTable() {
     []
   );
 
+  async function loadInventory() {
+    setLoading(true);
+    const response = await fetch("/api/inventory");
+    setRows(await response.json());
+    setLoading(false);
+  }
+
   function openAdjustment(row: InventoryRow) {
     setEditing(row);
     form.setFieldsValue({ type: "manual_adjustment", quantity: 1, note: "" });
   }
 
-  function saveAdjustment() {
+  async function saveAdjustment() {
     if (!editing) return;
     const values = form.getFieldsValue();
     const quantity = Number(values.quantity ?? 0);
@@ -76,9 +92,18 @@ export function InventoryTable() {
       return;
     }
 
-    setRows((current) => current.map((row) => (row.key === editing.key ? applyMovement(row, values.type, quantity, values.note) : row)));
+    const response = await fetch("/api/inventory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: editing.productId, type: values.type, quantity, note: values.note })
+    });
+    if (!response.ok) {
+      message.error("Không cập nhật được tồn kho");
+      return;
+    }
+    setRows(await response.json());
     setEditing(null);
-    message.success("Đã cập nhật tồn khả dụng");
+    message.success("Đã lưu biến động tồn vào database");
   }
 
   if (!mounted) {
@@ -87,7 +112,7 @@ export function InventoryTable() {
 
   return (
     <>
-      <Table rowKey="key" size="small" columns={columns} dataSource={rows} pagination={{ pageSize: 10 }} scroll={{ x: 1050 }} />
+      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={rows} pagination={{ pageSize: 10 }} scroll={{ x: 1050 }} />
       <Modal title={`Điều chỉnh tồn: ${editing?.product ?? ""}`} open={!!editing} onCancel={() => setEditing(null)} onOk={saveAdjustment} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Loại biến động" name="type"><Select options={movementOptions} /></Form.Item>
@@ -100,23 +125,4 @@ export function InventoryTable() {
       </Modal>
     </>
   );
-}
-
-function toRow(seed: (typeof inventorySeeds)[number]): InventoryRow {
-  return { ...seed, available: seed.onHand - seed.reserved };
-}
-
-function applyMovement(row: InventoryRow, type: string, quantity: number, note?: string): InventoryRow {
-  const next = { ...row };
-  if (["purchase_in", "return_in", "manual_adjustment"].includes(type)) next.onHand += quantity;
-  if (type === "reserve") next.reserved += quantity;
-  if (type === "release_reservation") next.reserved = Math.max(0, next.reserved - quantity);
-  if (type === "ship") {
-    next.onHand = Math.max(0, next.onHand - quantity);
-    next.reserved = Math.max(0, next.reserved - quantity);
-  }
-  if (type === "damage_out") next.onHand = Math.max(0, next.onHand - quantity);
-  next.available = next.onHand - next.reserved;
-  next.lastMovement = `${movementOptions.find((item) => item.value === type)?.label ?? type} ${quantity} ${row.unit}${note ? ` - ${note}` : ""}`;
-  return next;
 }

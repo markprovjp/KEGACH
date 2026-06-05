@@ -3,7 +3,7 @@
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { Alert, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
-import { canTransitionOrder } from "@/features/orders/order-status";
+import { canTransitionOrder, orderStatusLabels } from "@/features/orders/order-status";
 import { sampleOrders } from "@/lib/sample-data";
 import { KanbanColumn } from "./KanbanColumn";
 import type { KanbanColumnDefinition, KanbanOrder } from "./kanban-types";
@@ -38,7 +38,7 @@ export function KanbanBoard() {
     if (!order) return;
 
     if (!canTransitionOrder(order.status, nextStatus as KanbanOrder["status"])) {
-      message.warning(`Không thể chuyển ${order.kiotInvoiceCode} từ ${order.status} sang ${nextStatus}`);
+      message.warning(`Không thể chuyển ${order.kiotInvoiceCode} từ ${orderStatusLabels[order.status]} sang ${orderStatusLabels[nextStatus as KanbanOrder["status"]]}`);
       return;
     }
 

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -48,6 +48,7 @@ model Product {
   aliases           ProductAlias[]
   orderItems        OrderItem[]
   inventoryMovement InventoryMovement[]
+  weightPerUnitKg   Float               @default(0)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
@@ -89,6 +90,7 @@ model Order {
   customerPhone   String?
   province        String?
   codAmount       Int                   @default(0)
+  paymentKind     String                @default("debt")
   promisedSendAt  DateTime?
   note            String?
   rawChat         String?
@@ -107,7 +109,7 @@ model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
   productId String
-  quantity  Decimal @db.Decimal(12, 2)
+  quantity  Float
   unitPrice Int
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
@@ -118,6 +120,10 @@ model OrderItem {
 model Shipment {
   id           String   @id @default(cuid())
   orderId      String
+  deliveryMode String   @default("truck_share")
+  freightPayer String   @default("customer")
+  packageCount Int      @default(0)
+  estimatedWeightKg Float @default(0)
   driverName   String?
   carrierName  String?
   vehicleCode  String?
@@ -134,12 +140,24 @@ model InventoryMovement {
   productId String
   orderId   String?
   type      InventoryMovementType
-  quantity  Decimal               @db.Decimal(12, 2)
+  quantity  Float
   note      String?
   product   Product               @relation(fields: [productId], references: [id])
   createdAt DateTime              @default(now())
 
   @@map("inventory_movements")
+}
+
+model Carrier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  route     String
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("carriers")
 }
 
 model AuditLog {

@@ -20,7 +20,7 @@ const normalFlow: Record<OrderStatus, OrderStatus[]> = {
   draft: ["awaiting_kiot", "kiot_linked", "cancelled"],
   awaiting_kiot: ["kiot_linked", "cancelled", "problem"],
   kiot_linked: ["reserved", "cancelled", "problem"],
-  reserved: ["packing", "cancelled", "problem"],
+  reserved: ["kiot_linked", "packing", "cancelled", "problem"],
   packing: ["packed", "reserved", "problem"],
   packed: ["waiting_vehicle", "packing", "problem"],
   waiting_vehicle: ["scheduled", "packed", "problem"],
@@ -56,3 +56,19 @@ export function assertTransitionAllowed(from: OrderStatus, to: OrderStatus, reas
     throw new Error(`Moving order from ${from} to ${to} requires a reason`);
   }
 }
+
+export const orderStatusLabels: Record<OrderStatus, string> = {
+  draft: "Nháp",
+  awaiting_kiot: "Chờ hóa đơn Kiot",
+  kiot_linked: "Đã gắn Kiot",
+  reserved: "Đã giữ hàng",
+  packing: "Đang đóng hàng",
+  packed: "Đóng xong",
+  waiting_vehicle: "Chờ xe",
+  scheduled: "Đã xếp lịch",
+  shipped: "Đã gửi",
+  delivered: "Đã giao",
+  problem: "Có vấn đề",
+  cancelled: "Đã hủy",
+  returned: "Hàng trả về"
+};

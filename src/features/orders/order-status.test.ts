@@ -45,4 +45,9 @@ describe("order status machine", () => {
     expect(requireReasonForTransition("packing", "reserved")).toBe(true);
     expect(requireReasonForTransition("reserved", "packing")).toBe(false);
   });
+
+  it("allows rollback from reserved to Kiot linked with reason", () => {
+    expect(canTransitionOrder("reserved", "kiot_linked")).toBe(true);
+    expect(requireReasonForTransition("reserved", "kiot_linked")).toBe(true);
+  });
 });

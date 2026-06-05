@@ -4,13 +4,15 @@ import { Alert, Card, Col, Row, Statistic, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { OperationsCharts } from "@/features/dashboard/OperationsCharts";
+import type { OrderStatus } from "@/features/orders/order-status";
+import { orderStatusLabels } from "@/features/orders/order-status";
 import { sampleOrders } from "@/lib/sample-data";
 
 const columns: ColumnsType<(typeof sampleOrders)[number]> = [
   { title: "Hóa đơn Kiot", dataIndex: "kiotInvoiceCode", render: (value) => <b>{value}</b> },
   { title: "Khách", dataIndex: "customer" },
   { title: "Hàng", dataIndex: "productSummary" },
-  { title: "Trạng thái", dataIndex: "status", render: (value) => <Tag color="blue">{value}</Tag> },
+  { title: "Trạng thái", dataIndex: "status", render: (value: OrderStatus) => <Tag color="blue">{orderStatusLabels[value]}</Tag> },
   { title: "Ngày gửi", dataIndex: "sendDate" },
   { title: "COD", dataIndex: "codAmount", align: "right", render: (value) => `${value.toLocaleString("vi-VN")}đ` }
 ];

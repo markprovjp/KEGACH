@@ -3,6 +3,7 @@
 import { PhoneOutlined, WarningOutlined } from "@ant-design/icons";
 import { useDraggable } from "@dnd-kit/core";
 import { Badge, Card, Tag, Typography } from "antd";
+import { orderStatusLabels } from "@/features/orders/order-status";
 import type { KanbanOrder } from "./kanban-types";
 
 export function KanbanOrderCard({ order }: { order: KanbanOrder }) {
@@ -31,6 +32,7 @@ export function KanbanOrderCard({ order }: { order: KanbanOrder }) {
           {warning}
         </Tag>
       ))}
+      <Tag color="blue" style={{ marginTop: 6 }}>{orderStatusLabels[order.status]}</Tag>
     </Card>
   );
 }
