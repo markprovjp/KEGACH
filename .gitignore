@@ -9,3 +9,4 @@ prisma/dev.db-journal
 .superpowers/
 *.tsbuildinfo
 tool_events.jsonl
+khachhang.json

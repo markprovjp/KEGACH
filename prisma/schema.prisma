@@ -82,11 +82,20 @@ model ProductVariant {
 
 model Customer {
   id        String   @id @default(cuid())
+  kiotCustomerId   Int?     @unique
+  kiotCustomerCode String?  @unique
   name      String
   phone     String?
   address   String?
   province  String?
   note      String?
+  debt          Float    @default(0)
+  totalInvoiced Float    @default(0)
+  totalRevenue  Float    @default(0)
+  invoiceCount  Int      @default(0)
+  customerType  String?
+  groups        String?
+  lastTradingAt DateTime?
   orders    Order[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

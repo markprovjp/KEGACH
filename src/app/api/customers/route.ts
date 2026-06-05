@@ -5,11 +5,20 @@ export async function GET() {
   const customers = await prisma.customer.findMany({ orderBy: { updatedAt: "desc" } });
   return NextResponse.json(customers.map((customer) => ({
     id: customer.id,
+    kiotCustomerId: customer.kiotCustomerId,
+    kiotCustomerCode: customer.kiotCustomerCode,
     name: customer.name,
     phone: customer.phone,
     address: customer.address,
     province: customer.province,
-    note: customer.note
+    note: customer.note,
+    debt: customer.debt,
+    totalRevenue: customer.totalRevenue,
+    totalInvoiced: customer.totalInvoiced,
+    invoiceCount: customer.invoiceCount,
+    customerType: customer.customerType,
+    groups: customer.groups,
+    lastTradingAt: customer.lastTradingAt?.toISOString()
   })));
 }
 
