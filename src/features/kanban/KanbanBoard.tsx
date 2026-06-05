@@ -4,7 +4,6 @@ import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { Alert, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { canTransitionOrder, orderStatusLabels } from "@/features/orders/order-status";
-import { sampleOrders } from "@/lib/sample-data";
 import { KanbanColumn } from "./KanbanColumn";
 import type { KanbanColumnDefinition, KanbanOrder } from "./kanban-types";
 
@@ -21,12 +20,13 @@ const columns: KanbanColumnDefinition[] = [
 ];
 
 export function KanbanBoard() {
-  const [orders, setOrders] = useState<KanbanOrder[]>(sampleOrders);
+  const [orders, setOrders] = useState<KanbanOrder[]>([]);
   const [mounted, setMounted] = useState(false);
   const grouped = useMemo(() => new Map(columns.map((column) => [column.status, orders.filter((order) => order.status === column.status)])), [orders]);
 
   useEffect(() => {
     setMounted(true);
+    fetch("/api/orders").then((response) => response.json()).then(setOrders);
   }, []);
 
   function onDragEnd(event: DragEndEvent) {

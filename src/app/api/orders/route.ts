@@ -1,6 +1,36 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+export async function GET() {
+  const orders = await prisma.order.findMany({
+    include: {
+      items: { include: { product: true } },
+      shipments: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return NextResponse.json(orders.map((order) => ({
+    id: order.id,
+    code: order.code,
+    kiotInvoiceCode: order.kiotInvoiceCode ?? "Chưa gắn Kiot",
+    customer: order.customerName,
+    phone: order.customerPhone ?? "-",
+    productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity} ${item.product.unit}`).join(", ") || "Chưa có hàng",
+    total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+    codAmount: order.codAmount,
+    province: order.province ?? "-",
+    sendDate: order.promisedSendAt?.toISOString().slice(0, 10) ?? "Chưa hẹn",
+    driver: order.shipments[0]?.carrierName ?? order.shipments[0]?.driverName ?? undefined,
+    warnings: order.paymentKind === "debt" ? ["Công nợ"] : [],
+    status: order.status,
+    paymentKind: order.paymentKind,
+    deliveryMode: order.shipments[0]?.deliveryMode,
+    packageCount: order.shipments[0]?.packageCount ?? 0,
+    estimatedWeightKg: order.shipments[0]?.estimatedWeightKg ?? 0
+  })));
+}
+
 export async function POST(request: Request) {
   const body = await request.json();
   const existing = body.kiotInvoiceCode ? await prisma.order.findUnique({ where: { kiotInvoiceCode: body.kiotInvoiceCode } }) : null;

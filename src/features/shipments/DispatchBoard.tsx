@@ -4,12 +4,14 @@ import { EditOutlined, PhoneOutlined, PlusOutlined, SaveOutlined, SearchOutlined
 import { Button, Form, Input, Modal, Space, Table, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { sampleOrders, type CarrierSeed } from "@/lib/sample-data";
+import type { CarrierSeed } from "@/lib/sample-data";
 
 type CarrierRow = CarrierSeed & { key: string };
+type DispatchOrder = { id: string; kiotInvoiceCode: string; province: string; driver?: string; status: string };
 
 export function DispatchBoard() {
   const [carriers, setCarriers] = useState<CarrierRow[]>([]);
+  const [orders, setOrders] = useState<DispatchOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<CarrierRow | null>(null);
@@ -17,6 +19,7 @@ export function DispatchBoard() {
 
   useEffect(() => {
     void loadCarriers();
+    fetch("/api/orders").then((response) => response.json()).then(setOrders);
   }, []);
 
   const filtered = useMemo(() => {
@@ -84,7 +87,7 @@ export function DispatchBoard() {
         </Button>
       </div>
       <div className="dispatch-summary">
-        {sampleOrders.filter((order) => ["waiting_vehicle", "scheduled", "shipped"].includes(order.status)).map((order) => (
+        {orders.filter((order) => ["waiting_vehicle", "scheduled", "shipped"].includes(order.status)).map((order) => (
           <div key={order.id} className="dispatch-card">
             <b>{order.kiotInvoiceCode}</b>
             <span>{order.province}</span>

@@ -6,9 +6,18 @@ import { useEffect, useState } from "react";
 import { OperationsCharts } from "@/features/dashboard/OperationsCharts";
 import type { OrderStatus } from "@/features/orders/order-status";
 import { orderStatusLabels } from "@/features/orders/order-status";
-import { sampleOrders } from "@/lib/sample-data";
 
-const columns: ColumnsType<(typeof sampleOrders)[number]> = [
+type OrderRow = {
+  id: string;
+  kiotInvoiceCode: string;
+  customer: string;
+  productSummary: string;
+  status: OrderStatus;
+  sendDate: string;
+  codAmount: number;
+};
+
+const columns: ColumnsType<OrderRow> = [
   { title: "Hóa đơn Kiot", dataIndex: "kiotInvoiceCode", render: (value) => <b>{value}</b> },
   { title: "Khách", dataIndex: "customer" },
   { title: "Hàng", dataIndex: "productSummary" },
@@ -19,9 +28,12 @@ const columns: ColumnsType<(typeof sampleOrders)[number]> = [
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+    fetch("/api/orders").then((response) => response.json()).then(setOrders).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -37,7 +49,7 @@ export default function DashboardPage() {
       </Row>
       <OperationsCharts />
       <Card title="Đơn đang chạy" style={{ marginTop: 14 }}>
-        {mounted ? <Table rowKey="id" size="small" columns={columns} dataSource={sampleOrders} pagination={false} scroll={{ x: 900 }} /> : <div className="table-fallback">Đang tải danh sách đơn...</div>}
+        {mounted ? <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={orders} pagination={false} scroll={{ x: 900 }} /> : <div className="table-fallback">Đang tải danh sách đơn...</div>}
       </Card>
     </main>
   );
