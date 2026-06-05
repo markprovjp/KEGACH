@@ -1,4 +1,5 @@
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
+import { buildVariantSearchTokens } from "@/features/catalog/product-search-helpers";
 import { compactAlias } from "@/lib/normalize";
 
 export type ParsedKiotInvoiceLine = {
@@ -31,6 +32,12 @@ export function parseKiotInvoiceText(rawText: string, products: CatalogProduct[]
   for (const product of products) {
     aliasIndex.set(compactAlias(product.name), product);
     for (const alias of product.aliases) aliasIndex.set(compactAlias(alias.value), product);
+    for (const variant of product.variants ?? []) {
+      for (const alias of buildVariantSearchTokens(product, variant)) {
+        const key = compactAlias(alias);
+        if (!aliasIndex.has(key)) aliasIndex.set(key, product);
+      }
+    }
   }
 
   const invoice: ParsedKiotInvoice = {

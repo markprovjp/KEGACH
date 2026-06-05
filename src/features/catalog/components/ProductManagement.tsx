@@ -7,6 +7,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
+import { buildVariantLabel } from "@/features/catalog/product-search-helpers";
 
 type ProductRow = CatalogProduct & { key: string };
 type ProductFormValues = ProductRow & { aliasesText: string; variantsText: string };
@@ -40,7 +41,7 @@ export function ProductManagement() {
         title: "Phân loại keo",
         dataIndex: "variants",
         width: 260,
-        render: (variants: ProductRow["variants"]) => variants?.length ? variants.slice(0, 4).map((variant) => <Tag key={variant.code}>{formatVariant(variant)}</Tag>) : "-"
+        render: (_, row) => row.variants?.length ? buildVariantLabel(row).split(", ").slice(0, 4).map((variant) => <Tag key={variant}>{variant}</Tag>) : "-"
       },
       {
         title: "Alias",
@@ -82,7 +83,7 @@ export function ProductManagement() {
     form.setFieldsValue({
       ...next,
       aliasesText: next.aliases.map((alias) => alias.value).join(", "),
-      variantsText: (next.variants ?? []).map(formatVariant).join("\n")
+      variantsText: (next.variants ?? []).map(formatVariantForInput).join("\n")
     });
   }
 
@@ -173,13 +174,6 @@ export function ProductManagement() {
   );
 }
 
-function formatVariant(variant: NonNullable<ProductRow["variants"]>[number]): string {
-  const chunks = [];
-  if (variant.cartonCount) chunks.push(`${variant.cartonCount}thùng`);
-  if (variant.tubeCount) chunks.push(`${variant.tubeCount}tuýp`);
-  return `${variant.code} ${chunks.join("+") || "0"}`;
-}
-
 function parseVariantsText(value?: string): NonNullable<ProductRow["variants"]> {
   return String(value ?? "")
     .split(/\r?\n/)
@@ -191,6 +185,13 @@ function parseVariantsText(value?: string): NonNullable<ProductRow["variants"]> 
       const tubeCount = Number(/(\d+)\s*t(?:uyp|uýp|uip|úyp|uíp)/i.exec(line)?.[1] ?? 0);
       return { code, cartonCount, tubeCount };
     });
+}
+
+function formatVariantForInput(variant: NonNullable<ProductRow["variants"]>[number]): string {
+  const chunks = [];
+  if (variant.cartonCount) chunks.push(`${variant.cartonCount}thung`);
+  if (variant.tubeCount) chunks.push(`${variant.tubeCount}tuyp`);
+  return `${variant.code} ${chunks.join("+") || "0"}`;
 }
 
 function fileToDataUrl(file: File): Promise<string> {

@@ -1,5 +1,6 @@
 import { compactAlias, normalizeSearchText } from "@/lib/normalize";
 import type { CatalogProduct, ProductParseResult } from "./catalog-types";
+import { buildVariantSearchTokens } from "./product-search-helpers";
 
 const quantityPattern = /(?:=|:)\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z\u00C0-\u1EF9]+)?|\b(\d+(?:[.,]\d+)?)\s*([a-zA-Z\u00C0-\u1EF9]+)\b/u;
 
@@ -41,9 +42,15 @@ function splitOrderLines(rawText: string): string[] {
 }
 
 function buildAliasIndex(products: CatalogProduct[]): Map<string, CatalogProduct> {
-  const entries = products.flatMap((product) => [product.name, ...product.aliases.map((alias) => alias.value)].map((value) => [compactAlias(value), product] as const));
-  entries.sort((a, b) => b[0].length - a[0].length);
-  return new Map(entries);
+  const index = new Map<string, CatalogProduct>();
+  const primaryEntries = products.flatMap((product) => [product.name, ...product.aliases.map((alias) => alias.value)].map((value) => [compactAlias(value), product] as const));
+  const variantEntries = products.flatMap((product) => (product.variants ?? []).flatMap((variant) => buildVariantSearchTokens(product, variant).map((value) => [compactAlias(value), product] as const)));
+
+  for (const [alias, product] of primaryEntries.sort((a, b) => b[0].length - a[0].length)) index.set(alias, product);
+  for (const [alias, product] of variantEntries.sort((a, b) => b[0].length - a[0].length)) {
+    if (!index.has(alias)) index.set(alias, product);
+  }
+  return index;
 }
 
 function extractQuantity(rawLine: string): { value: number; unit?: string } {
