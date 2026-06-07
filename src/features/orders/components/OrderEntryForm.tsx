@@ -55,6 +55,15 @@ type CarrierOption = {
   route: string;
 };
 
+type CustomerOption = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  address?: string | null;
+  province?: string | null;
+  note?: string | null;
+};
+
 type EntryMode = "invoice" | "ocr";
 type OrderMode = "draft" | "official";
 
@@ -241,6 +250,19 @@ export function OrderEntryForm() {
       productId,
       productName: product?.name,
       unitPrice: product?.defaultPrice ?? line.unitPrice
+    });
+  }
+
+  function applyCustomer(customer?: CustomerOption) {
+    if (!customer) {
+      form.setFieldValue("customerId", undefined);
+      return;
+    }
+    form.setFieldsValue({
+      customerId: customer.id,
+      customerName: customer.name,
+      customerPhone: customer.phone ?? undefined,
+      customerAddress: customer.address ?? undefined
     });
   }
 
@@ -453,6 +475,7 @@ export function OrderEntryForm() {
                           <Form.Item label="Kênh nhận đơn" name="sourceChannel">
                             <Select options={[{ value: "kiot_print", label: "In từ Kiot Việt" }, { value: "zalo", label: "Zalo" }, { value: "facebook", label: "Facebook" }, { value: "phone", label: "Điện thoại" }, { value: "counter", label: "Tại quầy" }]} />
                           </Form.Item>
+                          <Form.Item label="Khách cũ trong hệ thống" name="customerId"><CustomerSearch onSelectCustomer={applyCustomer} /></Form.Item>
                           <Form.Item label="Khách hàng" name="customerName"><Input /></Form.Item>
                           <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
                           <Form.Item label="Địa chỉ" name="customerAddress"><Input /></Form.Item>
@@ -462,7 +485,8 @@ export function OrderEntryForm() {
                         </div>
                       ) : (
                         <div className="manual-draft-meta">
-                          <Form.Item label="Khách hàng" name="customerName"><Input placeholder="Tên khách / đại lý / thợ" /></Form.Item>
+                          <Form.Item label="Khách cũ" name="customerId"><CustomerSearch onSelectCustomer={applyCustomer} /></Form.Item>
+                          <Form.Item label="Khách mới / tên khách" name="customerName"><Input placeholder="Tên khách / đại lý / thợ" /></Form.Item>
                           <Form.Item label="SĐT" name="customerPhone"><Input placeholder="Số điện thoại nếu có" /></Form.Item>
                           <Form.Item label="Địa chỉ / tuyến gửi" name="customerAddress"><Input placeholder="Địa chỉ, tỉnh, nhà xe khách muốn gửi..." /></Form.Item>
                           <Form.Item label="Ghi chú nháp" name="note"><Input placeholder="Ví dụ: khách chưa chốt, hỏi thêm hàng, thiếu hàng cần nhập..." /></Form.Item>
@@ -500,7 +524,7 @@ export function OrderEntryForm() {
                       onChange={(value) => setOrderMode(value ? "official" : "draft")}
                     />
                   </Form.Item>
-                  <Form.Item label="Khách hàng có sẵn" name="customerId"><CustomerSearch /></Form.Item>
+                  <Form.Item label="Khách hàng có sẵn" name="customerId"><CustomerSearch onSelectCustomer={applyCustomer} /></Form.Item>
                   <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
                   <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
                   <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>

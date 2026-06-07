@@ -12,7 +12,7 @@ type CustomerOption = {
   note?: string | null;
 };
 
-export function CustomerSearch({ value, onChange }: { value?: string; onChange?: (value: string) => void }) {
+export function CustomerSearch({ value, onChange, onSelectCustomer }: { value?: string; onChange?: (value?: string) => void; onSelectCustomer?: (customer?: CustomerOption) => void }) {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
 
   useEffect(() => {
@@ -27,7 +27,11 @@ export function CustomerSearch({ value, onChange }: { value?: string; onChange?:
         showSearch
         allowClear
         value={value}
-        onChange={onChange}
+        onChange={(nextValue) => {
+          onChange?.(nextValue);
+          onSelectCustomer?.(customers.find((item) => item.id === nextValue));
+        }}
+        style={{ width: "100%" }}
         optionFilterProp="label"
         placeholder="Chọn khách hàng"
         options={customers.map((item) => ({ value: item.id, label: `${item.name}${item.phone ? ` - ${item.phone}` : ""}` }))}

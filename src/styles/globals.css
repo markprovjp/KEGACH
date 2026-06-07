@@ -169,7 +169,7 @@ a {
 
 .manual-draft-meta {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.6fr) minmax(260px, 1.1fr) minmax(260px, 1.1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px 18px;
 }
 
