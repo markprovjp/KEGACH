@@ -1,13 +1,14 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined, UploadOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SaveOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import { Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Table, Tag, Typography, Upload, message } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
-import { buildVariantLabel } from "@/features/catalog/product-search-helpers";
+import { buildProductSearchText, buildVariantLabel } from "@/features/catalog/product-search-helpers";
+import { normalizeSearchText } from "@/lib/normalize";
 
 type ProductRow = CatalogProduct & { key: string };
 type ProductFormValues = ProductRow & { aliasesText: string; variantsText: string };
@@ -18,11 +19,18 @@ export function ProductManagement() {
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [pageSize, setPageSize] = useState<PageSizeValue>(10);
+  const [query, setQuery] = useState("");
   const [form] = Form.useForm<ProductFormValues>();
 
   useEffect(() => {
     void loadProducts();
   }, []);
+
+  const filteredProducts = useMemo(() => {
+    const normalized = normalizeSearchText(query);
+    if (!normalized) return products;
+    return products.filter((product) => buildProductSearchText(product).includes(normalized));
+  }, [products, query]);
 
   const columns: ColumnsType<ProductRow> = useMemo(
     () => [
@@ -40,8 +48,8 @@ export function ProductManagement() {
       {
         title: "Phân loại keo",
         dataIndex: "variants",
-        width: 260,
-        render: (_, row) => row.variants?.length ? buildVariantLabel(row).split(", ").slice(0, 4).map((variant) => <Tag key={variant}>{variant}</Tag>) : "-"
+        width: 520,
+        render: (_, row) => row.variants?.length ? <div className="product-variant-list">{buildVariantLabel(row).split(", ").map((variant) => <Tag key={variant}>{variant}</Tag>)}</div> : "-"
       },
       {
         title: "Alias",
@@ -140,12 +148,16 @@ export function ProductManagement() {
     <div>
       <div className="section-toolbar">
         <Typography.Text type="secondary">Quản lý giá, đơn vị, quy cách và alias dùng khi tách đơn chat.</Typography.Text>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
-          Thêm sản phẩm
-        </Button>
+        <Space wrap>
+          <Input prefix={<SearchOutlined />} placeholder="Tìm sản phẩm, alias, B14, CAT14..." value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: 300 }} />
+          <Button icon={<ReloadOutlined />} onClick={loadProducts}>Tải lại</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
+            Thêm sản phẩm
+          </Button>
+        </Space>
       </div>
-      <PageSizeControl total={products.length} value={pageSize} onChange={setPageSize} />
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={products} pagination={tablePagination(pageSize, products.length)} scroll={{ x: 1380, y: 620 }} />
+      <PageSizeControl total={filteredProducts.length} value={pageSize} onChange={setPageSize} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length)} scroll={{ x: 1660, y: 620 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm sản phẩm"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveProduct} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Ảnh sản phẩm">

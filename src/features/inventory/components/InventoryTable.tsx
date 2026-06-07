@@ -1,10 +1,11 @@
 "use client";
 
-import { EditOutlined, SaveOutlined } from "@ant-design/icons";
+import { EditOutlined, ReloadOutlined, SaveOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { normalizeSearchText } from "@/lib/normalize";
 
 type InventoryRow = {
   key: string;
@@ -34,12 +35,27 @@ export function InventoryTable() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<InventoryRow | null>(null);
   const [pageSize, setPageSize] = useState<PageSizeValue>(10);
+  const [query, setQuery] = useState("");
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "reserved" | "out">("all");
   const [form] = Form.useForm<{ type: string; quantity: number; note: string }>();
 
   useEffect(() => {
     setMounted(true);
     void loadInventory();
   }, []);
+
+  const filteredRows = useMemo(() => {
+    const normalized = normalizeSearchText(query);
+    return rows.filter((row) => {
+      const matchesText = !normalized || normalizeSearchText(`${row.product} ${row.unit} ${row.lastMovement}`).includes(normalized);
+      const matchesStock =
+        stockFilter === "all" ||
+        (stockFilter === "low" && row.available <= row.lowStockThreshold) ||
+        (stockFilter === "reserved" && row.reserved > 0) ||
+        (stockFilter === "out" && row.available <= 0);
+      return matchesText && matchesStock;
+    });
+  }, [rows, query, stockFilter]);
 
   const columns: ColumnsType<InventoryRow> = useMemo(
     () => [
@@ -114,8 +130,25 @@ export function InventoryTable() {
 
   return (
     <>
-      <PageSizeControl total={rows.length} value={pageSize} onChange={setPageSize} />
-      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={rows} pagination={tablePagination(pageSize, rows.length)} scroll={{ x: 1050 }} />
+      <div className="table-toolbar">
+        <Space wrap>
+          <Input prefix={<SearchOutlined />} placeholder="Tìm sản phẩm, biến động..." value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: 300 }} />
+          <Select
+            value={stockFilter}
+            onChange={setStockFilter}
+            style={{ width: 160 }}
+            options={[
+              { value: "all", label: "Tất cả tồn" },
+              { value: "low", label: "Tồn thấp" },
+              { value: "reserved", label: "Đang giữ" },
+              { value: "out", label: "Hết khả dụng" }
+            ]}
+          />
+          <Button icon={<ReloadOutlined />} onClick={loadInventory}>Tải lại</Button>
+        </Space>
+        <PageSizeControl total={filteredRows.length} value={pageSize} onChange={setPageSize} />
+      </div>
+      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={filteredRows} pagination={tablePagination(pageSize, filteredRows.length)} scroll={{ x: 1050 }} />
       <Modal title={`Điều chỉnh tồn: ${editing?.product ?? ""}`} open={!!editing} onCancel={() => setEditing(null)} onOk={saveAdjustment} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Loại biến động" name="type"><Select options={movementOptions} /></Form.Item>

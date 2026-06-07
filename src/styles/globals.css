@@ -303,6 +303,16 @@ a {
   font-size: 12px;
 }
 
+.product-variant-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.product-variant-list .ant-tag {
+  margin-inline-end: 0;
+}
+
 .kanban-scroll {
   display: flex;
   gap: 12px;

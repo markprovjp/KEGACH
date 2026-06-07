@@ -25,14 +25,13 @@ describe("business sample data", () => {
   });
 
   it("contains BONBOND and EPOXY CAT variants", () => {
-    expect(productVariantSeeds.filter((variant) => variant.productId === "keo-bonbond")).toHaveLength(12);
-    expect(productVariantSeeds.filter((variant) => variant.productId === "keo-epoxy-cat")).toHaveLength(12);
+    expect(productVariantSeeds.filter((variant) => variant.productId === "keo-bonbond")).toHaveLength(14);
+    expect(productVariantSeeds.filter((variant) => variant.productId === "keo-epoxy-cat")).toHaveLength(14);
     expect(productVariantSeeds).toContainEqual({ productId: "keo-bonbond", code: "01", cartonCount: 0, tubeCount: 0 });
     expect(productVariantSeeds).toContainEqual({ productId: "keo-bonbond", code: "12", cartonCount: 17, tubeCount: 29 });
+    expect(productVariantSeeds).toContainEqual({ productId: "keo-bonbond", code: "14", cartonCount: 50, tubeCount: 29 });
     expect(productVariantSeeds).toContainEqual({ productId: "keo-epoxy-cat", code: "11", cartonCount: 19, tubeCount: 20 });
     expect(productVariantSeeds).toContainEqual({ productId: "keo-epoxy-cat", code: "12", cartonCount: 9, tubeCount: 12 });
-    expect(productVariantSeeds).not.toContainEqual(expect.objectContaining({ productId: "keo-bonbond", code: "B13" }));
-    expect(productVariantSeeds).not.toContainEqual(expect.objectContaining({ productId: "keo-bonbond", code: "B14" }));
-    expect(productVariantSeeds).not.toContainEqual(expect.objectContaining({ productId: "keo-epoxy-cat", code: "13" }));
+    expect(productVariantSeeds).toContainEqual({ productId: "keo-epoxy-cat", code: "14", cartonCount: 0, tubeCount: 0 });
   });
 });

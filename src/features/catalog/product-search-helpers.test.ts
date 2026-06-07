@@ -25,11 +25,12 @@ describe("product search helpers", () => {
     expect(buildProductSearchText(bonbond)).toContain("b01");
     expect(buildProductSearchText(bonbond)).toContain("b02");
     expect(buildProductSearchText(bonbond)).toContain("b12");
-    expect(buildProductSearchText(bonbond)).not.toContain("b13");
-    expect(buildProductSearchText(bonbond)).not.toContain("b14");
+    expect(buildProductSearchText(bonbond)).toContain("b13");
+    expect(buildProductSearchText(bonbond)).toContain("b14");
     expect(buildProductSearchText(cat)).toContain("cat01");
     expect(buildProductSearchText(cat)).toContain("cat12");
-    expect(buildProductSearchText(cat)).not.toContain("cat13");
+    expect(buildProductSearchText(cat)).toContain("cat13");
+    expect(buildProductSearchText(cat)).toContain("cat14");
     expect(buildProductSearchText(cat)).not.toContain("b01");
   });
 

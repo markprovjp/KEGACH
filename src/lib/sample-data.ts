@@ -60,6 +60,8 @@ export const productVariantSeeds: ProductVariantSeed[] = [
   { productId: "keo-bonbond", code: "10", cartonCount: 10, tubeCount: 0 },
   { productId: "keo-bonbond", code: "11", cartonCount: 5, tubeCount: 3 },
   { productId: "keo-bonbond", code: "12", cartonCount: 17, tubeCount: 29 },
+  { productId: "keo-bonbond", code: "13", cartonCount: 16, tubeCount: 9 },
+  { productId: "keo-bonbond", code: "14", cartonCount: 50, tubeCount: 29 },
   { productId: "keo-epoxy-cat", code: "01", cartonCount: 46, tubeCount: 25 },
   { productId: "keo-epoxy-cat", code: "02", cartonCount: 9, tubeCount: 24 },
   { productId: "keo-epoxy-cat", code: "03", cartonCount: 15, tubeCount: 21 },
@@ -71,7 +73,9 @@ export const productVariantSeeds: ProductVariantSeed[] = [
   { productId: "keo-epoxy-cat", code: "09", cartonCount: 32, tubeCount: 17 },
   { productId: "keo-epoxy-cat", code: "10", cartonCount: 28, tubeCount: 3 },
   { productId: "keo-epoxy-cat", code: "11", cartonCount: 19, tubeCount: 20 },
-  { productId: "keo-epoxy-cat", code: "12", cartonCount: 9, tubeCount: 12 }
+  { productId: "keo-epoxy-cat", code: "12", cartonCount: 9, tubeCount: 12 },
+  { productId: "keo-epoxy-cat", code: "13", cartonCount: 10, tubeCount: 17 },
+  { productId: "keo-epoxy-cat", code: "14", cartonCount: 0, tubeCount: 0 }
 ];
 
 export type SampleCustomer = {
