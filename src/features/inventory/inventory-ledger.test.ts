@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateStock, createMovement } from "./inventory-ledger";
+import { calculatePackagingReconciliation, calculateStock, createMovement } from "./inventory-ledger";
 
 describe("inventory ledger", () => {
   it("calculates on hand, reserved, and available stock", () => {
@@ -16,5 +16,20 @@ describe("inventory ledger", () => {
 
   it("rejects non-positive quantities", () => {
     expect(() => createMovement("reserve", 0)).toThrow("greater than zero");
+  });
+
+  it("reconciles loose nem, plastic bags, and finished packed nem", () => {
+    const result = calculatePackagingReconciliation([
+      { rawKg: 100, bagKg: 6, finishedKg: 106 },
+      { rawKg: 50, bagKg: 3, finishedKg: 52.5 }
+    ]);
+
+    expect(result).toEqual({
+      rawUsedKg: 150,
+      bagUsedKg: 9,
+      finishedKg: 158.5,
+      expectedBagKg: 8.5,
+      varianceKg: 0.5
+    });
   });
 });

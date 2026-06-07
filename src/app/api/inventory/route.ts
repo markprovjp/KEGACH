@@ -17,6 +17,8 @@ export async function GET() {
         snapshot.reserved -= movement.quantity;
       }
       if (movement.type === "damage_out") snapshot.onHand -= movement.quantity;
+      if (movement.type === "package_consume") snapshot.onHand -= movement.quantity;
+      if (movement.type === "package_produce") snapshot.onHand += movement.quantity;
       return snapshot;
     }, { onHand: 0, reserved: 0 });
     return {

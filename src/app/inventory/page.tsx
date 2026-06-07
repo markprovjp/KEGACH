@@ -3,6 +3,7 @@
 import { Card, Tabs } from "antd";
 import { ProductManagement } from "@/features/catalog/components/ProductManagement";
 import { InventoryTable } from "@/features/inventory/components/InventoryTable";
+import { PackagingManagement } from "@/features/inventory/components/PackagingManagement";
 
 export default function InventoryPage() {
   return (
@@ -13,6 +14,7 @@ export default function InventoryPage() {
         <Tabs
           items={[
             { key: "stock", label: "Tồn kho", children: <InventoryTable /> },
+            { key: "packaging", label: "Đóng gói nêm", children: <PackagingManagement /> },
             { key: "products", label: "Sản phẩm", children: <ProductManagement /> }
           ]}
         />

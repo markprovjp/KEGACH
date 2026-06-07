@@ -31,6 +31,8 @@ enum InventoryMovementType {
   ship
   return_in
   damage_out
+  package_consume
+  package_produce
 }
 
 enum ReconciliationStatus {
@@ -50,6 +52,9 @@ model Product {
   variants          ProductVariant[]
   orderItems        OrderItem[]
   inventoryMovement InventoryMovement[]
+  packagingRaw      PackagingBatch[]    @relation("PackagingRawProduct")
+  packagingBag      PackagingBatch[]    @relation("PackagingBagProduct")
+  packagingFinished PackagingBatch[]    @relation("PackagingFinishedProduct")
   weightPerUnitKg   Float               @default(0)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
@@ -168,13 +173,35 @@ model InventoryMovement {
   id        String                @id @default(cuid())
   productId String
   orderId   String?
+  packagingBatchId String?
   type      InventoryMovementType
   quantity  Float
   note      String?
   product   Product               @relation(fields: [productId], references: [id])
+  packagingBatch PackagingBatch?    @relation(fields: [packagingBatchId], references: [id], onDelete: SetNull)
   createdAt DateTime              @default(now())
 
   @@map("inventory_movements")
+}
+
+model PackagingBatch {
+  id                String              @id @default(cuid())
+  code              String              @unique
+  rawProductId      String
+  bagProductId      String
+  finishedProductId String
+  rawKg             Float
+  bagKg             Float
+  finishedKg        Float
+  note              String?
+  rawProduct        Product             @relation("PackagingRawProduct", fields: [rawProductId], references: [id])
+  bagProduct        Product             @relation("PackagingBagProduct", fields: [bagProductId], references: [id])
+  finishedProduct   Product             @relation("PackagingFinishedProduct", fields: [finishedProductId], references: [id])
+  movements         InventoryMovement[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("packaging_batches")
 }
 
 model Carrier {

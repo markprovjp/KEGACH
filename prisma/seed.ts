@@ -12,7 +12,7 @@ async function main() {
         unit: product.unit,
         defaultPrice: product.defaultPrice,
         packageRule: product.packageRule,
-        weightPerUnitKg: estimateWeightKg(product.packageRule, product.unit),
+        weightPerUnitKg: product.weightPerUnitKg ?? estimateWeightKg(product.packageRule, product.unit),
         aliases: {
           deleteMany: {},
           create: product.aliases.map((alias) => ({ value: alias.value }))
@@ -30,7 +30,7 @@ async function main() {
         unit: product.unit,
         defaultPrice: product.defaultPrice,
         packageRule: product.packageRule,
-        weightPerUnitKg: estimateWeightKg(product.packageRule, product.unit),
+        weightPerUnitKg: product.weightPerUnitKg ?? estimateWeightKg(product.packageRule, product.unit),
         aliases: {
           create: product.aliases.map((alias) => ({ value: alias.value }))
         },

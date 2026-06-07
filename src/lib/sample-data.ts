@@ -7,6 +7,8 @@ export const sampleProducts: CatalogProduct[] = [
   { id: "ke-can-bang-2mm", name: "Ke cân bằng 2MM", unit: "bao", defaultPrice: 47000, packageRule: "30 kg / bao", aliases: [{ value: "B04" }, { value: "2ly" }, { value: "ke 2 ly" }] },
   { id: "ke-can-bang-3mm", name: "Ke cân bằng 3MM", unit: "bao", defaultPrice: 47000, packageRule: "30 kg / bao", aliases: [{ value: "B03" }, { value: "3ly" }, { value: "ke 3 ly" }] },
   { id: "nem", name: "Nêm", unit: "bao", defaultPrice: 35000, packageRule: "30 kg / bao", aliases: [{ value: "nem" }, { value: "nêm" }, { value: "nem 1 bao" }] },
+  { id: "nem-roi", name: "Nêm rời", unit: "kg", defaultPrice: 0, packageRule: "Nguyên liệu rời để đóng bao", weightPerUnitKg: 1, aliases: [{ value: "nêm rời" }, { value: "nem roi" }] },
+  { id: "tui-bong-dong-nem", name: "Túi bóng đóng nêm", unit: "kg", defaultPrice: 0, packageRule: "Túi bóng xuất dùng theo kg", weightPerUnitKg: 1, aliases: [{ value: "túi bóng" }, { value: "tui bong" }] },
   { id: "kim-siet-ke", name: "Kìm siết ke", unit: "thùng", defaultPrice: 25000, packageRule: "50 cái / thùng", aliases: [{ value: "kìm siết" }, { value: "kim siet" }] },
   { id: "ke-chu-thap-1mm", name: "Ke chữ thập 1MM", unit: "bao", defaultPrice: 85000, packageRule: "30 kg / bao", aliases: [{ value: "chữ thập 1ly" }] },
   { id: "ke-chu-thap-1-5mm", name: "Ke chữ thập 1.5MM", unit: "bao", defaultPrice: 85000, packageRule: "30 kg / bao", aliases: [{ value: "chữ thập 1.5ly" }] },
@@ -118,9 +120,9 @@ export const inventorySeeds: InventoryRowSeed[] = sampleProducts.map((product, i
   productId: product.id,
   product: product.name,
   unit: product.unit,
-  onHand: [120, 84, 96, 64, 24, 16, 52, 44, 38, 33, 28, 18, 22, 36, 30, 27, 11, 14, 12, 40, 33, 20, 9, 15, 10, 2][index] ?? 20,
-  reserved: [18, 8, 12, 9, 12, 3, 5, 4, 2, 6, 8, 2, 1, 6, 4, 3, 1, 0, 0, 3, 4, 2, 1, 0, 0, 0][index] ?? 0,
-  lowStockThreshold: [40, 40, 40, 40, 20, 8, 25, 25, 25, 25, 25, 12, 12, 18, 10, 10, 5, 5, 5, 8, 8, 8, 5, 5, 5, 1][index] ?? 5,
+  onHand: [120, 84, 96, 64, 24, 0, 0, 16, 52, 44, 38, 33, 28, 18, 22, 36, 30, 27, 11, 14, 12, 40, 33, 20, 9, 15, 10, 2][index] ?? 20,
+  reserved: [18, 8, 12, 9, 12, 0, 0, 3, 5, 4, 2, 6, 8, 2, 1, 6, 4, 3, 1, 0, 0, 3, 4, 2, 1, 0, 0, 0][index] ?? 0,
+  lowStockThreshold: [40, 40, 40, 40, 20, 50, 10, 8, 25, 25, 25, 25, 25, 12, 12, 18, 10, 10, 5, 5, 5, 8, 8, 8, 5, 5, 5, 1][index] ?? 5,
   lastMovement: index % 3 === 0 ? "giữ hàng HD004066" : index % 3 === 1 ? "nhập mua" : "xuất giao HD004082"
 }));
 
