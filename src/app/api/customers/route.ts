@@ -49,3 +49,23 @@ export async function POST(request: Request) {
   });
   return NextResponse.json(customer);
 }
+
+export async function PATCH(request: Request) {
+  const body = await request.json();
+  const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown): id is string => typeof id === "string" && id.trim().length > 0) : [];
+  if (!ids.length) return NextResponse.json({ error: "Chưa chọn khách hàng" }, { status: 422 });
+
+  const data: { customerType?: string | null; groups?: string | null; province?: string | null; note?: string | null } = {};
+  if ("customerType" in body) data.customerType = body.customerType || null;
+  if ("groups" in body) data.groups = Array.isArray(body.groups) ? body.groups.join(", ") : body.groups || null;
+  if ("province" in body) data.province = body.province || null;
+  if ("note" in body) data.note = body.note || null;
+
+  if (!Object.keys(data).length) return NextResponse.json({ error: "Chưa chọn thao tác cập nhật" }, { status: 422 });
+
+  const result = await prisma.customer.updateMany({
+    where: { id: { in: ids } },
+    data
+  });
+  return NextResponse.json({ updated: result.count });
+}
