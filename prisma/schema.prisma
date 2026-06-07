@@ -108,16 +108,21 @@ model Order {
   code            String                @unique
   kiotInvoiceCode String?               @unique
   sourceChannel   String
+  orderType       String                @default("online")
   status          OrderStatus           @default(awaiting_kiot)
+  isOfficial      Boolean               @default(false)
   customerId      String?
   customerName    String
   customerPhone   String?
+  customerAddress String?
   province        String?
   codAmount       Int                   @default(0)
   paymentKind     String                @default("debt")
+  paymentStatus   String                @default("unpaid")
   promisedSendAt  DateTime?
   note            String?
   rawChat         String?
+  workflowChecks  Json?
   customer        Customer?             @relation(fields: [customerId], references: [id])
   items           OrderItem[]
   shipments       Shipment[]

@@ -32,6 +32,13 @@ export function KanbanOrderCard({ order, onEdit, onDelete, compact }: { order: K
           {warning}
         </Tag>
       ))}
+      {order.workflowMissing?.length ? (
+        <Tag color="red" icon={<WarningOutlined />} style={{ marginTop: 6 }}>
+          Thiếu {order.workflowMissing.length} bước quy trình
+        </Tag>
+      ) : (
+        <Tag color="green" style={{ marginTop: 6 }}>Đủ checklist</Tag>
+      )}
       <div className="card-line" style={{ marginTop: 6 }}>
         <Tag color="blue">{orderStatusLabels[order.status]}</Tag>
         <Space onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import type { OrderStatus } from "@/features/orders/order-status";
+import { canMoveToStatus, getWorkflowMissing, normalizeWorkflowChecks } from "@/features/orders/order-workflow";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -16,17 +17,43 @@ export async function PUT(request: Request, context: RouteContext) {
     if (duplicate) return NextResponse.json({ error: "Hóa đơn Kiot đã tồn tại" }, { status: 409 });
   }
 
+  const nextStatus = (body.status || existing.status) as OrderStatus;
+  const workflowChecks = normalizeWorkflowChecks(body.workflowChecks ?? existing.workflowChecks);
+  const nextWorkflow = {
+    status: nextStatus,
+    orderType: body.orderType || existing.orderType,
+    isOfficial: Boolean(body.isOfficial ?? existing.isOfficial),
+    kiotInvoiceCode,
+    customerName: body.customerName || body.customer || existing.customerName,
+    customerPhone: body.customerPhone || body.phone || null,
+    customerAddress: body.customerAddress || null,
+    codAmount: Number(body.codAmount ?? 0),
+    paymentStatus: body.paymentStatus || existing.paymentStatus,
+    carrierName: body.carrierName ? String(body.carrierName) : null,
+    deliveryMode: body.deliveryMode || existing.shipments[0]?.deliveryMode,
+    packageCount: Number(body.packageCount ?? 0),
+    estimatedWeightKg: Number(body.estimatedWeightKg ?? 0),
+    workflowChecks
+  };
+  const move = canMoveToStatus(nextWorkflow, nextStatus);
+  if (!move.ok) return NextResponse.json({ error: "Chưa đủ checklist để chuyển trạng thái", missing: move.missing }, { status: 422 });
+
   const order = await prisma.order.update({
     where: { id },
     data: {
       kiotInvoiceCode,
+      orderType: body.orderType || existing.orderType,
+      isOfficial: Boolean(body.isOfficial ?? existing.isOfficial),
       customerName: body.customerName || body.customer || existing.customerName,
       customerPhone: body.customerPhone || body.phone || null,
+      customerAddress: body.customerAddress || null,
       province: body.province || null,
       codAmount: Number(body.codAmount ?? 0),
       paymentKind: body.paymentKind || existing.paymentKind,
-      status: (body.status || existing.status) as OrderStatus,
+      paymentStatus: body.paymentStatus || existing.paymentStatus,
+      status: nextStatus,
       note: body.note || null,
+      workflowChecks,
       shipments: {
         upsert: {
           where: { id: existing.shipments[0]?.id ?? "__missing__" },
@@ -72,12 +99,17 @@ type OrderWithRelations = {
   kiotInvoiceCode: string | null;
   customerName: string;
   customerPhone: string | null;
+  customerAddress: string | null;
   codAmount: number;
   province: string | null;
   promisedSendAt: Date | null;
+  orderType: string;
+  isOfficial: boolean;
   paymentKind: string;
+  paymentStatus: string;
   status: OrderStatus;
   note: string | null;
+  workflowChecks: unknown;
   items: Array<{ quantity: number; unitPrice: number; product: { name: string; unit: string } }>;
   shipments: Array<{ carrierName: string | null; driverName: string | null; deliveryMode: string; freightPayer: string; packageCount: number; estimatedWeightKg: number }>;
 };
@@ -90,6 +122,7 @@ function toOrderRow(order: OrderWithRelations) {
     kiotInvoiceCode: order.kiotInvoiceCode ?? "Chưa gắn Kiot",
     customer: order.customerName,
     phone: order.customerPhone ?? "-",
+    customerAddress: order.customerAddress ?? undefined,
     productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity} ${item.product.unit}`).join(", ") || "Chưa có hàng",
     total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     codAmount: order.codAmount,
@@ -100,11 +133,31 @@ function toOrderRow(order: OrderWithRelations) {
     driverName: order.shipments[0]?.driverName ?? undefined,
     warnings: order.paymentKind === "debt" ? ["Công nợ"] : [],
     status: order.status,
+    orderType: order.orderType,
+    isOfficial: order.isOfficial,
     paymentKind: order.paymentKind,
+    paymentStatus: order.paymentStatus,
     deliveryMode: order.shipments[0]?.deliveryMode,
     freightPayer: order.shipments[0]?.freightPayer,
     packageCount: order.shipments[0]?.packageCount ?? 0,
     estimatedWeightKg: order.shipments[0]?.estimatedWeightKg ?? 0,
-    note: order.note ?? undefined
+    note: order.note ?? undefined,
+    workflowChecks: normalizeWorkflowChecks(order.workflowChecks),
+    workflowMissing: getWorkflowMissing({
+      status: order.status,
+      orderType: order.orderType,
+      isOfficial: order.isOfficial,
+      kiotInvoiceCode: order.kiotInvoiceCode,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerAddress: order.customerAddress,
+      codAmount: order.codAmount,
+      paymentStatus: order.paymentStatus,
+      carrierName: order.shipments[0]?.carrierName,
+      deliveryMode: order.shipments[0]?.deliveryMode,
+      packageCount: order.shipments[0]?.packageCount,
+      estimatedWeightKg: order.shipments[0]?.estimatedWeightKg,
+      workflowChecks: order.workflowChecks
+    })
   };
 }

@@ -9,6 +9,8 @@ import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { ProductSearch } from "@/features/catalog/components/ProductSearch";
 import { CustomerSearch } from "@/features/customers/components/CustomerSearch";
 import { estimateOrderWeightKg, parseKiotInvoiceText } from "@/features/orders/kiot-invoice-parser";
+import { orderTypeLabels, paymentStatusLabels, type OrderType, type PaymentStatus } from "@/features/orders/order-workflow";
+import { WorkflowChecklist } from "@/features/orders/components/WorkflowChecklist";
 
 type Line = {
   key: string;
@@ -21,15 +23,20 @@ type Line = {
 type OrderFormValues = {
   kiotInvoiceCode?: string;
   sourceChannel?: string;
+  orderType?: OrderType;
+  isOfficial?: boolean;
   customerName?: string;
   customerPhone?: string;
+  customerAddress?: string;
   customerId?: string;
   codAmount?: number;
   paymentKind?: "cod" | "debt";
+  paymentStatus?: PaymentStatus;
   deliveryMode?: "truck_share" | "direct_truck";
   freightPayer?: "customer" | "company";
   packageCount?: number;
   estimatedWeightKg?: number;
+  workflowChecks?: string[];
   note?: string;
 };
 
@@ -72,6 +79,7 @@ export function OrderEntryForm() {
   const [saving, setSaving] = useState(false);
   const [linePageSize, setLinePageSize] = useState<PageSizeValue>(10);
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
+  const watchedValues = Form.useWatch([], form) ?? {};
 
   useEffect(() => {
     void loadProducts();
@@ -126,8 +134,11 @@ export function OrderEntryForm() {
     form.setFieldsValue({
       kiotInvoiceCode: parsed.kiotInvoiceCode,
       sourceChannel: "kiot_print",
+      orderType: "online",
+      isOfficial: true,
       customerName: parsed.customerName,
       customerPhone: parsed.customerPhone,
+      paymentStatus: parsed.remainingDebt && parsed.remainingDebt > 0 ? "unpaid" : "paid",
       paymentKind: parsed.remainingDebt && parsed.remainingDebt > 0 ? "debt" : "cod",
       codAmount: parsed.totalPayment ?? 0,
       deliveryMode: "truck_share",
@@ -157,7 +168,7 @@ export function OrderEntryForm() {
   }
 
   return (
-    <Form form={form} layout="vertical" className="order-form" initialValues={{ sourceChannel: "kiot_print", paymentKind: "debt", deliveryMode: "truck_share", freightPayer: "customer" }}>
+    <Form form={form} layout="vertical" className="order-form" initialValues={{ sourceChannel: "kiot_print", orderType: "online", isOfficial: false, paymentKind: "debt", paymentStatus: "unpaid", deliveryMode: "truck_share", freightPayer: "customer", workflowChecks: [] }}>
       <div className="split-grid">
         <Form.Item label="Paste hóa đơn Kiot / text OCR">
           <Input.TextArea value={rawText} onChange={(event) => setRawText(event.target.value)} rows={12} />
@@ -185,20 +196,47 @@ export function OrderEntryForm() {
         <Form.Item label="Kênh nhận đơn" name="sourceChannel">
           <Select options={[{ value: "kiot_print", label: "In từ Kiot Việt" }, { value: "zalo", label: "Zalo" }, { value: "facebook", label: "Facebook" }, { value: "phone", label: "Điện thoại" }, { value: "counter", label: "Tại quầy" }]} />
         </Form.Item>
+        <Form.Item label="Loại đơn vận hành" name="orderType">
+          <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
+        </Form.Item>
+        <Form.Item label="Loại phiếu" name="isOfficial">
+          <Select options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]} />
+        </Form.Item>
         <Form.Item label="Khách hàng có sẵn" name="customerId"><CustomerSearch /></Form.Item>
         <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
         <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
+        <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
         <Form.Item label="Ngày hẹn gửi" name="promisedSendDate"><DatePicker style={{ width: "100%" }} /></Form.Item>
       </div>
 
       <div className="form-grid">
         <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
+        <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
         <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
         <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Gửi xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
         <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
         <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
         <Form.Item label="Khối lượng ước tính (kg)" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
       </div>
+
+      <Form.Item name="workflowChecks" noStyle>
+        <WorkflowChecklist
+          order={{
+            status: watchedValues.isOfficial && watchedValues.kiotInvoiceCode ? "kiot_linked" : "draft",
+            orderType: watchedValues.orderType,
+            isOfficial: watchedValues.isOfficial,
+            kiotInvoiceCode: watchedValues.kiotInvoiceCode,
+            customerName: watchedValues.customerName,
+            customerPhone: watchedValues.customerPhone,
+            customerAddress: watchedValues.customerAddress,
+            codAmount: watchedValues.codAmount,
+            paymentStatus: watchedValues.paymentStatus,
+            deliveryMode: watchedValues.deliveryMode,
+            packageCount: watchedValues.packageCount,
+            estimatedWeightKg: watchedValues.estimatedWeightKg
+          }}
+        />
+      </Form.Item>
 
       <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
       <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length)} columns={columns} dataSource={lines} />

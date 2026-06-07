@@ -6,6 +6,7 @@ export type KanbanOrder = {
   kiotInvoiceCode: string;
   customer: string;
   phone: string;
+  customerAddress?: string;
   productSummary: string;
   total: number;
   codAmount: number;
@@ -16,12 +17,17 @@ export type KanbanOrder = {
   driverName?: string;
   warnings: string[];
   status: OrderStatus;
+  orderType?: string;
+  isOfficial?: boolean;
   paymentKind?: string;
+  paymentStatus?: string;
   deliveryMode?: string;
   freightPayer?: string;
   packageCount?: number;
   estimatedWeightKg?: number;
   note?: string;
+  workflowChecks?: string[];
+  workflowMissing?: string[];
 };
 
 export type KanbanColumnDefinition = {

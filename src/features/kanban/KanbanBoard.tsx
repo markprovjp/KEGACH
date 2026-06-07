@@ -5,11 +5,14 @@ import { Alert, Button, Form, Input, InputNumber, Modal, Segmented, Select, Swit
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, limitRows, type PageSizeValue } from "@/components/PageSizeControl";
 import { canTransitionOrder, orderStatusLabels, orderStatuses } from "@/features/orders/order-status";
+import { orderTypeLabels, paymentStatusLabels } from "@/features/orders/order-workflow";
+import { WorkflowChecklist } from "@/features/orders/components/WorkflowChecklist";
 import { KanbanColumn } from "./KanbanColumn";
 import type { KanbanColumnDefinition, KanbanOrder } from "./kanban-types";
 
 type CarrierOption = { id: string; name: string; phone: string; route: string };
 type QuickFilter = "all" | "needsPacking" | "waitingCarrier" | "cod" | "debt" | "problem";
+type KanbanFormValues = KanbanOrder & { customerName?: string; customerPhone?: string };
 
 const columns: KanbanColumnDefinition[] = [
   { status: "awaiting_kiot", title: "Chờ HĐ Kiot" },
@@ -35,7 +38,8 @@ export function KanbanBoard() {
   const [compactCards, setCompactCards] = useState(true);
   const [editing, setEditing] = useState<KanbanOrder | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [form] = Form.useForm<KanbanOrder>();
+  const [form] = Form.useForm<KanbanFormValues>();
+  const watchedEdit = Form.useWatch([], form) ?? {};
 
   const carrierOptions = useMemo(() => uniqueOptions([...carriers.map((carrier) => carrier.name), ...(orders.map((order) => order.carrierName).filter(Boolean) as string[])]), [carriers, orders]);
   const provinceOptions = useMemo(() => uniqueOptions(orders.map((order) => order.province).filter((province) => province && province !== "-") as string[]), [orders]);
@@ -87,12 +91,12 @@ export function KanbanBoard() {
 
   function openEdit(order: KanbanOrder) {
     setEditing(order);
-    form.setFieldsValue({ ...order, kiotInvoiceCode: order.kiotInvoiceCode === "Chưa gắn Kiot" ? "" : order.kiotInvoiceCode, customerName: order.customer, customerPhone: order.phone } as KanbanOrder & { customerName: string; customerPhone: string });
+    form.setFieldsValue({ ...order, kiotInvoiceCode: order.kiotInvoiceCode === "Chưa gắn Kiot" ? "" : order.kiotInvoiceCode, customerName: order.customer, customerPhone: order.phone });
   }
 
   async function saveEditing() {
     if (!editing) return;
-    const values = form.getFieldsValue() as KanbanOrder & { customerName?: string; customerPhone?: string };
+    const values = form.getFieldsValue();
     const saved = await saveOrder({ ...editing, ...values, customer: values.customerName ?? editing.customer, phone: values.customerPhone ?? editing.phone }, true);
     if (saved) setEditing(null);
   }
@@ -211,10 +215,14 @@ export function KanbanBoard() {
           <div className="form-grid">
             <Form.Item label="Hóa đơn Kiot" name="kiotInvoiceCode"><Input /></Form.Item>
             <Form.Item label="Trạng thái" name="status"><Select options={orderStatuses.map((status) => ({ value: status, label: orderStatusLabels[status] }))} /></Form.Item>
+            <Form.Item label="Loại đơn" name="orderType"><Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
+            <Form.Item label="Loại phiếu" name="isOfficial"><Select options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]} /></Form.Item>
             <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
             <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
+            <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
             <Form.Item label="Tỉnh/địa bàn" name="province"><Input /></Form.Item>
             <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
+            <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
             <Form.Item label="Tiền COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
             <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
             <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
@@ -223,6 +231,25 @@ export function KanbanBoard() {
             <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
             <Form.Item label="Khối lượng ước tính" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
           </div>
+          <Form.Item name="workflowChecks" noStyle>
+            <WorkflowChecklist
+              order={{
+                status: watchedEdit.status,
+                orderType: watchedEdit.orderType,
+                isOfficial: watchedEdit.isOfficial,
+                kiotInvoiceCode: watchedEdit.kiotInvoiceCode,
+                customerName: watchedEdit.customerName,
+                customerPhone: watchedEdit.customerPhone,
+                customerAddress: watchedEdit.customerAddress,
+                codAmount: watchedEdit.codAmount,
+                paymentStatus: watchedEdit.paymentStatus,
+                carrierName: watchedEdit.carrierName,
+                deliveryMode: watchedEdit.deliveryMode,
+                packageCount: watchedEdit.packageCount,
+                estimatedWeightKg: watchedEdit.estimatedWeightKg
+              }}
+            />
+          </Form.Item>
           <Form.Item label="Ghi chú" name="note"><Input.TextArea rows={3} /></Form.Item>
         </Form>
       </Modal>
