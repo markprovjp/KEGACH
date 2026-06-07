@@ -42,7 +42,7 @@ a {
   background: #fff;
 }
 
-.theme-dark .app-header {
+html[data-theme="dark"] .app-header {
   border-bottom-color: #263241;
   background: #111827;
 }
@@ -728,80 +728,80 @@ a {
   color: #667085;
 }
 
-.theme-dark .brand-subtitle,
-.theme-dark .page-subtitle,
-.theme-dark .muted,
-.theme-dark .bar-value,
-.theme-dark .bar-label,
-.theme-dark .order-facts span,
-.theme-dark .manual-invoice-total span,
-.theme-dark .product-search-option span,
-.theme-dark .kanban-column-more,
-.theme-dark .table-fallback,
-.theme-dark .image-placeholder,
-.theme-dark .upload-preview-empty {
+html[data-theme="dark"] .brand-subtitle,
+html[data-theme="dark"] .page-subtitle,
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] .bar-value,
+html[data-theme="dark"] .bar-label,
+html[data-theme="dark"] .order-facts span,
+html[data-theme="dark"] .manual-invoice-total span,
+html[data-theme="dark"] .product-search-option span,
+html[data-theme="dark"] .kanban-column-more,
+html[data-theme="dark"] .table-fallback,
+html[data-theme="dark"] .image-placeholder,
+html[data-theme="dark"] .upload-preview-empty {
   color: #94a3b8;
 }
 
-.theme-dark .order-workbench,
-.theme-dark .order-mode-panel,
-.theme-dark .manual-invoice,
-.theme-dark .workflow-panel,
-.theme-dark .packaging-form,
-.theme-dark .table-ops-bar,
-.theme-dark .kanban-card,
-.theme-dark .kanban-summary-card,
-.theme-dark .static-card {
+html[data-theme="dark"] .order-workbench,
+html[data-theme="dark"] .order-mode-panel,
+html[data-theme="dark"] .manual-invoice,
+html[data-theme="dark"] .workflow-panel,
+html[data-theme="dark"] .packaging-form,
+html[data-theme="dark"] .table-ops-bar,
+html[data-theme="dark"] .kanban-card,
+html[data-theme="dark"] .kanban-summary-card,
+html[data-theme="dark"] .static-card {
   border-color: #263241;
   background: #111827;
 }
 
-.theme-dark .parse-panel,
-.theme-dark .workflow-phase-box,
-.theme-dark .dispatch-card,
-.theme-dark .packaging-summary .ant-statistic,
-.theme-dark .table-fallback,
-.theme-dark .kanban-column {
+html[data-theme="dark"] .parse-panel,
+html[data-theme="dark"] .workflow-phase-box,
+html[data-theme="dark"] .dispatch-card,
+html[data-theme="dark"] .packaging-summary .ant-statistic,
+html[data-theme="dark"] .table-fallback,
+html[data-theme="dark"] .kanban-column {
   border-color: #263241;
   background: #1f2937;
 }
 
-.theme-dark .parse-line-match {
+html[data-theme="dark"] .parse-line-match {
   border-color: #2f5d40;
   background: #17321f;
 }
 
-.theme-dark .bar-track,
-.theme-dark .image-placeholder,
-.theme-dark .upload-preview-empty {
+html[data-theme="dark"] .bar-track,
+html[data-theme="dark"] .image-placeholder,
+html[data-theme="dark"] .upload-preview-empty {
   border-color: #334155;
   background: #1f2937;
 }
 
-.theme-dark .table-ops-filter > span {
+html[data-theme="dark"] .table-ops-filter > span {
   color: #94a3b8;
 }
 
-.theme-dark .table-ops-bulk {
+html[data-theme="dark"] .table-ops-bulk {
   border-top-color: #334155;
 }
 
-.theme-dark .order-action-bar {
+html[data-theme="dark"] .order-action-bar {
   border-top-color: #263241;
   background: rgba(15, 23, 42, 0.94);
 }
 
-.theme-dark .kanban-next-action {
+html[data-theme="dark"] .kanban-next-action {
   border-color: #7c5b12;
   background: #2f260f;
 }
 
-.theme-dark .kanban-next-action.blocked {
+html[data-theme="dark"] .kanban-next-action.blocked {
   border-color: #7f2a25;
   background: #351715;
 }
 
-.theme-dark .kanban-next-action span {
+html[data-theme="dark"] .kanban-next-action span {
   color: #94a3b8;
 }
 
