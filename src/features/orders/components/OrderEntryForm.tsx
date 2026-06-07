@@ -447,18 +447,27 @@ export function OrderEntryForm() {
                         <span>Điện thoại: 0393.393.188 / Zalo: 0393.393.188</span>
                       </div>
                       <div className="manual-invoice-title">{isOfficial ? "HÓA ĐƠN BÁN HÀNG" : "ĐƠN NHÁP BÁN HÀNG"}</div>
-                      <div className="manual-invoice-meta">
-                        <Form.Item label="Số hóa đơn" name="kiotInvoiceCode"><Input placeholder={isOfficial ? "HD004102" : "Tự sinh khi lưu nháp"} /></Form.Item>
-                        <Form.Item label="Kênh nhận đơn" name="sourceChannel">
-                          <Select options={[{ value: "kiot_print", label: "In từ Kiot Việt" }, { value: "zalo", label: "Zalo" }, { value: "facebook", label: "Facebook" }, { value: "phone", label: "Điện thoại" }, { value: "counter", label: "Tại quầy" }]} />
-                        </Form.Item>
-                        <Form.Item label="Khách hàng" name="customerName"><Input /></Form.Item>
-                        <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
-                        <Form.Item label="Địa chỉ" name="customerAddress"><Input /></Form.Item>
-                        <Form.Item label="Loại đơn" name="orderType">
-                          <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
-                        </Form.Item>
-                      </div>
+                      {isOfficial ? (
+                        <div className="manual-invoice-meta">
+                          <Form.Item label="Số hóa đơn" name="kiotInvoiceCode"><Input placeholder="HD004102" /></Form.Item>
+                          <Form.Item label="Kênh nhận đơn" name="sourceChannel">
+                            <Select options={[{ value: "kiot_print", label: "In từ Kiot Việt" }, { value: "zalo", label: "Zalo" }, { value: "facebook", label: "Facebook" }, { value: "phone", label: "Điện thoại" }, { value: "counter", label: "Tại quầy" }]} />
+                          </Form.Item>
+                          <Form.Item label="Khách hàng" name="customerName"><Input /></Form.Item>
+                          <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
+                          <Form.Item label="Địa chỉ" name="customerAddress"><Input /></Form.Item>
+                          <Form.Item label="Loại đơn" name="orderType">
+                            <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
+                          </Form.Item>
+                        </div>
+                      ) : (
+                        <div className="manual-draft-meta">
+                          <Form.Item label="Khách hàng" name="customerName"><Input placeholder="Tên khách / đại lý / thợ" /></Form.Item>
+                          <Form.Item label="SĐT" name="customerPhone"><Input placeholder="Số điện thoại nếu có" /></Form.Item>
+                          <Form.Item label="Địa chỉ / tuyến gửi" name="customerAddress"><Input placeholder="Địa chỉ, tỉnh, nhà xe khách muốn gửi..." /></Form.Item>
+                          <Form.Item label="Ghi chú nháp" name="note"><Input placeholder="Ví dụ: khách chưa chốt, hỏi thêm hàng, thiếu hàng cần nhập..." /></Form.Item>
+                        </div>
+                      )}
                       <div className="table-toolbar">
                         <Button icon={<PlusOutlined />} onClick={addLine}>Thêm sản phẩm</Button>
                         <Tag color={stockWarnings.length ? "red" : "green"}>{stockWarnings.length ? `Thiếu ${stockWarnings.length} dòng` : "Đủ tồn"}</Tag>
