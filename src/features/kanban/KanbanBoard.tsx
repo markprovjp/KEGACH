@@ -1,7 +1,7 @@
 "use client";
 
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
-import { Alert, Button, Form, Input, InputNumber, Modal, Segmented, Select, Switch, message } from "antd";
+import { Alert, Button, Drawer, Form, Input, InputNumber, Segmented, Select, Space, Switch, Tabs, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, limitRows, type PageSizeValue } from "@/components/PageSizeControl";
 import { canTransitionOrder, orderStatusLabels, orderStatuses } from "@/features/orders/order-status";
@@ -210,49 +210,89 @@ export function KanbanBoard() {
         </div>
       </div>
       {board}
-      <Modal title={`Sửa đơn ${editing?.kiotInvoiceCode ?? ""}`} open={!!editing} onCancel={() => setEditing(null)} onOk={saveEditing} okText="Lưu" cancelText="Đóng" width={720}>
+      <Drawer
+        title={`Sửa đơn ${editing?.kiotInvoiceCode ?? ""}`}
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        size={780}
+        extra={(
+          <Space>
+            <Button onClick={() => setEditing(null)}>Đóng</Button>
+            <Button type="primary" onClick={saveEditing}>Lưu</Button>
+          </Space>
+        )}
+      >
         <Form form={form} layout="vertical">
-          <div className="form-grid">
-            <Form.Item label="Hóa đơn Kiot" name="kiotInvoiceCode"><Input /></Form.Item>
-            <Form.Item label="Trạng thái" name="status"><Select options={orderStatuses.map((status) => ({ value: status, label: orderStatusLabels[status] }))} /></Form.Item>
-            <Form.Item label="Loại đơn" name="orderType"><Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
-            <Form.Item label="Loại phiếu" name="isOfficial"><Select options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]} /></Form.Item>
-            <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
-            <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
-            <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
-            <Form.Item label="Tỉnh/địa bàn" name="province"><Input /></Form.Item>
-            <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
-            <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
-            <Form.Item label="Tiền COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
-            <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
-            <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
-            <Form.Item label="Nhà xe" name="carrierName"><Select showSearch allowClear optionFilterProp="label" options={carriers.map((carrier) => ({ value: carrier.name, label: `${carrier.name} - ${carrier.route}` }))} /></Form.Item>
-            <Form.Item label="Tài xế / ghi chú giao" name="driverName"><Input /></Form.Item>
-            <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
-            <Form.Item label="Khối lượng ước tính" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
-          </div>
-          <Form.Item name="workflowChecks" noStyle>
-            <WorkflowChecklist
-              order={{
-                status: watchedEdit.status,
-                orderType: watchedEdit.orderType,
-                isOfficial: watchedEdit.isOfficial,
-                kiotInvoiceCode: watchedEdit.kiotInvoiceCode,
-                customerName: watchedEdit.customerName,
-                customerPhone: watchedEdit.customerPhone,
-                customerAddress: watchedEdit.customerAddress,
-                codAmount: watchedEdit.codAmount,
-                paymentStatus: watchedEdit.paymentStatus,
-                carrierName: watchedEdit.carrierName,
-                deliveryMode: watchedEdit.deliveryMode,
-                packageCount: watchedEdit.packageCount,
-                estimatedWeightKg: watchedEdit.estimatedWeightKg
-              }}
-            />
-          </Form.Item>
-          <Form.Item label="Ghi chú" name="note"><Input.TextArea rows={3} /></Form.Item>
+          <Tabs
+            className="order-edit-tabs"
+            items={[
+              {
+                key: "main",
+                label: "Chính",
+                children: (
+                  <div className="form-grid compact-form-grid">
+                    <Form.Item label="Hóa đơn Kiot" name="kiotInvoiceCode"><Input /></Form.Item>
+                    <Form.Item label="Trạng thái" name="status"><Select options={orderStatuses.map((status) => ({ value: status, label: orderStatusLabels[status] }))} /></Form.Item>
+                    <Form.Item label="Loại đơn" name="orderType"><Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
+                    <Form.Item label="Loại phiếu" name="isOfficial"><Select options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]} /></Form.Item>
+                    <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
+                    <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
+                    <Form.Item label="Tỉnh/địa bàn" name="province"><Input /></Form.Item>
+                    <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
+                  </div>
+                )
+              },
+              {
+                key: "delivery",
+                label: "Giao/COD",
+                children: (
+                  <div className="form-grid compact-form-grid">
+                    <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
+                    <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
+                    <Form.Item label="Tiền COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
+                    <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
+                    <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
+                    <Form.Item label="Nhà xe" name="carrierName"><Select showSearch allowClear optionFilterProp="label" options={carriers.map((carrier) => ({ value: carrier.name, label: `${carrier.name} - ${carrier.route}` }))} /></Form.Item>
+                    <Form.Item label="Tài xế / ghi chú giao" name="driverName"><Input /></Form.Item>
+                    <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
+                    <Form.Item label="Khối lượng ước tính" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
+                  </div>
+                )
+              },
+              {
+                key: "workflow",
+                label: "Checklist",
+                children: (
+                  <Form.Item name="workflowChecks" noStyle>
+                    <WorkflowChecklist
+                      order={{
+                        status: watchedEdit.status,
+                        orderType: watchedEdit.orderType,
+                        isOfficial: watchedEdit.isOfficial,
+                        kiotInvoiceCode: watchedEdit.kiotInvoiceCode,
+                        customerName: watchedEdit.customerName,
+                        customerPhone: watchedEdit.customerPhone,
+                        customerAddress: watchedEdit.customerAddress,
+                        codAmount: watchedEdit.codAmount,
+                        paymentStatus: watchedEdit.paymentStatus,
+                        carrierName: watchedEdit.carrierName,
+                        deliveryMode: watchedEdit.deliveryMode,
+                        packageCount: watchedEdit.packageCount,
+                        estimatedWeightKg: watchedEdit.estimatedWeightKg
+                      }}
+                    />
+                  </Form.Item>
+                )
+              },
+              {
+                key: "note",
+                label: "Ghi chú",
+                children: <Form.Item label="Ghi chú" name="note"><Input.TextArea rows={6} /></Form.Item>
+              }
+            ]}
+          />
         </Form>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

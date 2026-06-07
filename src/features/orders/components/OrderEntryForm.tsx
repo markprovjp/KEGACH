@@ -1,7 +1,7 @@
 "use client";
 
 import { FileTextOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
-import { Button, DatePicker, Form, Input, InputNumber, Select, Space, Table, Typography, message } from "antd";
+import { Button, DatePicker, Form, Input, InputNumber, Select, Space, Table, Tabs, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -169,84 +169,128 @@ export function OrderEntryForm() {
 
   return (
     <Form form={form} layout="vertical" className="order-form" initialValues={{ sourceChannel: "kiot_print", orderType: "online", isOfficial: false, paymentKind: "debt", paymentStatus: "unpaid", deliveryMode: "truck_share", freightPayer: "customer", workflowChecks: [] }}>
-      <div className="split-grid">
-        <Form.Item label="Paste hóa đơn Kiot / text OCR">
-          <Input.TextArea value={rawText} onChange={(event) => setRawText(event.target.value)} rows={12} />
-        </Form.Item>
-        <div className="parse-panel">
-          <div className="card-line">
-            <Typography.Text strong>Trích xuất hóa đơn Kiot</Typography.Text>
-            <Button icon={<FileTextOutlined />} onClick={applyKiotInvoice}>Đưa vào đơn</Button>
-          </div>
-          <p><b>Hóa đơn:</b> {parsed.kiotInvoiceCode ?? "-"}</p>
-          <p><b>Khách:</b> {parsed.customerName ?? "-"} {parsed.customerPhone ? `- ${parsed.customerPhone}` : ""}</p>
-          <p><b>Tổng thanh toán:</b> {(parsed.totalPayment ?? 0).toLocaleString("vi-VN")}đ</p>
-          <p><b>Còn nợ:</b> {(parsed.remainingDebt ?? 0).toLocaleString("vi-VN")}đ</p>
-          {parsed.lines.map((line) => (
-            <div key={`${line.sku}-${line.rawName}`} className="card-line">
-              <span>{line.productName}</span>
-              <b>{line.quantity} x {line.unitPrice.toLocaleString("vi-VN")}đ</b>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="form-grid">
-        <Form.Item label="Mã hóa đơn Kiot" name="kiotInvoiceCode"><Input placeholder="HD004066" /></Form.Item>
-        <Form.Item label="Kênh nhận đơn" name="sourceChannel">
-          <Select options={[{ value: "kiot_print", label: "In từ Kiot Việt" }, { value: "zalo", label: "Zalo" }, { value: "facebook", label: "Facebook" }, { value: "phone", label: "Điện thoại" }, { value: "counter", label: "Tại quầy" }]} />
-        </Form.Item>
-        <Form.Item label="Loại đơn vận hành" name="orderType">
-          <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
-        </Form.Item>
-        <Form.Item label="Loại phiếu" name="isOfficial">
-          <Select options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]} />
-        </Form.Item>
-        <Form.Item label="Khách hàng có sẵn" name="customerId"><CustomerSearch /></Form.Item>
-        <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
-        <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
-        <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
-        <Form.Item label="Ngày hẹn gửi" name="promisedSendDate"><DatePicker style={{ width: "100%" }} /></Form.Item>
-      </div>
-
-      <div className="form-grid">
-        <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
-        <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
-        <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
-        <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Gửi xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
-        <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
-        <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
-        <Form.Item label="Khối lượng ước tính (kg)" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
-      </div>
-
-      <Form.Item name="workflowChecks" noStyle>
-        <WorkflowChecklist
-          order={{
-            status: watchedValues.isOfficial && watchedValues.kiotInvoiceCode ? "kiot_linked" : "draft",
-            orderType: watchedValues.orderType,
-            isOfficial: watchedValues.isOfficial,
-            kiotInvoiceCode: watchedValues.kiotInvoiceCode,
-            customerName: watchedValues.customerName,
-            customerPhone: watchedValues.customerPhone,
-            customerAddress: watchedValues.customerAddress,
-            codAmount: watchedValues.codAmount,
-            paymentStatus: watchedValues.paymentStatus,
-            deliveryMode: watchedValues.deliveryMode,
-            packageCount: watchedValues.packageCount,
-            estimatedWeightKg: watchedValues.estimatedWeightKg
-          }}
+      <div className="order-workbench">
+        <Tabs
+          type="card"
+          items={[
+            {
+              key: "kiot",
+              label: "1. Kiot",
+              children: (
+                <div className="order-intake-grid">
+                  <Form.Item label="Paste hóa đơn Kiot / text OCR">
+                    <Input.TextArea value={rawText} onChange={(event) => setRawText(event.target.value)} rows={14} />
+                  </Form.Item>
+                  <div className="parse-panel parse-panel-sticky">
+                    <div className="card-line">
+                      <Typography.Text strong>Trích xuất hóa đơn Kiot</Typography.Text>
+                      <Button icon={<FileTextOutlined />} onClick={applyKiotInvoice}>Đưa vào đơn</Button>
+                    </div>
+                    <div className="order-facts">
+                      <span>Hóa đơn</span><b>{parsed.kiotInvoiceCode ?? "-"}</b>
+                      <span>Khách</span><b>{parsed.customerName ?? "-"} {parsed.customerPhone ? `- ${parsed.customerPhone}` : ""}</b>
+                      <span>Tổng</span><b>{(parsed.totalPayment ?? 0).toLocaleString("vi-VN")}đ</b>
+                      <span>Còn nợ</span><b>{(parsed.remainingDebt ?? 0).toLocaleString("vi-VN")}đ</b>
+                    </div>
+                    <div className="parse-lines">
+                      {parsed.lines.map((line) => (
+                        <div key={`${line.sku}-${line.rawName}`} className="card-line">
+                          <span>{line.productName}</span>
+                          <b>{line.quantity} x {line.unitPrice.toLocaleString("vi-VN")}đ</b>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            },
+            {
+              key: "customer",
+              label: "2. Khách",
+              children: (
+                <div className="form-grid compact-form-grid">
+                  <Form.Item label="Mã hóa đơn Kiot" name="kiotInvoiceCode"><Input placeholder="HD004066" /></Form.Item>
+                  <Form.Item label="Kênh nhận đơn" name="sourceChannel">
+                    <Select options={[{ value: "kiot_print", label: "In từ Kiot Việt" }, { value: "zalo", label: "Zalo" }, { value: "facebook", label: "Facebook" }, { value: "phone", label: "Điện thoại" }, { value: "counter", label: "Tại quầy" }]} />
+                  </Form.Item>
+                  <Form.Item label="Loại đơn vận hành" name="orderType">
+                    <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
+                  </Form.Item>
+                  <Form.Item label="Loại phiếu" name="isOfficial">
+                    <Select options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]} />
+                  </Form.Item>
+                  <Form.Item label="Khách hàng có sẵn" name="customerId"><CustomerSearch /></Form.Item>
+                  <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
+                  <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
+                  <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
+                  <Form.Item label="Ngày hẹn gửi" name="promisedSendDate"><DatePicker style={{ width: "100%" }} /></Form.Item>
+                </div>
+              )
+            },
+            {
+              key: "items",
+              label: `3. Hàng (${lines.length})`,
+              children: (
+                <>
+                  <div className="table-toolbar">
+                    <Button icon={<PlusOutlined />} onClick={addLine}>Thêm dòng</Button>
+                    <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
+                  </div>
+                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length)} columns={columns} dataSource={lines} />
+                </>
+              )
+            },
+            {
+              key: "delivery",
+              label: "4. Giao/COD",
+              children: (
+                <div className="form-grid compact-form-grid">
+                  <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
+                  <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
+                  <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
+                  <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Gửi xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
+                  <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
+                  <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
+                  <Form.Item label="Khối lượng ước tính (kg)" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
+                </div>
+              )
+            },
+            {
+              key: "workflow",
+              label: "5. Checklist",
+              children: (
+                <>
+                  <Form.Item name="workflowChecks" noStyle>
+                    <WorkflowChecklist
+                      order={{
+                        status: watchedValues.isOfficial && watchedValues.kiotInvoiceCode ? "kiot_linked" : "draft",
+                        orderType: watchedValues.orderType,
+                        isOfficial: watchedValues.isOfficial,
+                        kiotInvoiceCode: watchedValues.kiotInvoiceCode,
+                        customerName: watchedValues.customerName,
+                        customerPhone: watchedValues.customerPhone,
+                        customerAddress: watchedValues.customerAddress,
+                        codAmount: watchedValues.codAmount,
+                        paymentStatus: watchedValues.paymentStatus,
+                        deliveryMode: watchedValues.deliveryMode,
+                        packageCount: watchedValues.packageCount,
+                        estimatedWeightKg: watchedValues.estimatedWeightKg
+                      }}
+                    />
+                  </Form.Item>
+                  <Form.Item label="Ghi chú nội bộ" name="note"><Input.TextArea rows={3} /></Form.Item>
+                </>
+              )
+            }
+          ]}
         />
-      </Form.Item>
-
-      <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
-      <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length)} columns={columns} dataSource={lines} />
-      <Button icon={<PlusOutlined />} onClick={addLine} style={{ marginTop: 10 }}>Thêm dòng</Button>
-
-      <Form.Item label="Ghi chú nội bộ" name="note" style={{ marginTop: 12 }}><Input.TextArea rows={3} /></Form.Item>
-      <Space>
-        <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={saveOrder}>Lưu đơn vào database</Button>
-        <Button onClick={() => message.info("Đã tạo phiếu đóng hàng mẫu")}>In phiếu đóng hàng</Button>
-      </Space>
+      </div>
+      <div className="order-action-bar">
+        <Space>
+          <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={saveOrder}>Lưu đơn vào database</Button>
+          <Button onClick={() => message.info("Đã tạo phiếu đóng hàng mẫu")}>In phiếu đóng hàng</Button>
+        </Space>
+      </div>
     </Form>
   );
 }

@@ -24,7 +24,7 @@ export function WorkflowChecklist({ order, value, onChange }: { order: WorkflowO
         <Tag color={missing.length ? "red" : "green"}>{missing.length ? `Thiếu ${missing.length}` : "Đủ"}</Tag>
       </div>
       <Progress percent={percent} size="small" />
-      {missing.length ? <Alert type="warning" showIcon message="Chưa đủ quy trình" description={missing.slice(0, 6).join(" • ")} style={{ margin: "8px 0" }} /> : null}
+      {missing.length ? <Alert type="warning" showIcon title="Chưa đủ quy trình" description={missing.slice(0, 6).join(" • ")} style={{ margin: "8px 0" }} /> : null}
       <Checkbox.Group
         className="workflow-check-grid"
         value={checked}

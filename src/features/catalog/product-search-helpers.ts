@@ -36,8 +36,8 @@ export function buildVariantSearchTokens(product: CatalogProduct, variant: Produ
 
 function buildProductFamilyCodes(product: CatalogProduct): string[] {
   const name = product.name.toLowerCase();
-  if (name.includes("bonbond")) return rangeCodes("b", 1, 14);
-  if (name.includes("cat")) return rangeCodes("cat", 1, 13);
+  if (name.includes("bonbond")) return rangeCodes("b", 1, 12);
+  if (name.includes("cat")) return rangeCodes("cat", 1, 12);
   return [];
 }
 

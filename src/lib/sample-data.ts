@@ -38,18 +38,18 @@ export type ProductVariantSeed = {
 };
 
 export const productVariantSeeds: ProductVariantSeed[] = [
+  { productId: "keo-bonbond", code: "01", cartonCount: 0, tubeCount: 0 },
   { productId: "keo-bonbond", code: "02", cartonCount: 0, tubeCount: 8 },
   { productId: "keo-bonbond", code: "03", cartonCount: 35, tubeCount: 0 },
   { productId: "keo-bonbond", code: "04", cartonCount: 26, tubeCount: 9 },
   { productId: "keo-bonbond", code: "05", cartonCount: 36, tubeCount: 1 },
   { productId: "keo-bonbond", code: "06", cartonCount: 10, tubeCount: 16 },
+  { productId: "keo-bonbond", code: "07", cartonCount: 0, tubeCount: 0 },
   { productId: "keo-bonbond", code: "08", cartonCount: 3, tubeCount: 1 },
-  { productId: "keo-bonbond", code: "B09", cartonCount: 0, tubeCount: 18 },
-  { productId: "keo-bonbond", code: "B10", cartonCount: 10, tubeCount: 0 },
-  { productId: "keo-bonbond", code: "B11", cartonCount: 5, tubeCount: 3 },
-  { productId: "keo-bonbond", code: "B12", cartonCount: 17, tubeCount: 29 },
-  { productId: "keo-bonbond", code: "B13", cartonCount: 16, tubeCount: 9 },
-  { productId: "keo-bonbond", code: "B14", cartonCount: 50, tubeCount: 29 },
+  { productId: "keo-bonbond", code: "09", cartonCount: 0, tubeCount: 18 },
+  { productId: "keo-bonbond", code: "10", cartonCount: 10, tubeCount: 0 },
+  { productId: "keo-bonbond", code: "11", cartonCount: 5, tubeCount: 3 },
+  { productId: "keo-bonbond", code: "12", cartonCount: 17, tubeCount: 29 },
   { productId: "keo-epoxy-cat", code: "01", cartonCount: 46, tubeCount: 25 },
   { productId: "keo-epoxy-cat", code: "02", cartonCount: 9, tubeCount: 24 },
   { productId: "keo-epoxy-cat", code: "03", cartonCount: 15, tubeCount: 21 },
@@ -61,8 +61,7 @@ export const productVariantSeeds: ProductVariantSeed[] = [
   { productId: "keo-epoxy-cat", code: "09", cartonCount: 32, tubeCount: 17 },
   { productId: "keo-epoxy-cat", code: "10", cartonCount: 28, tubeCount: 3 },
   { productId: "keo-epoxy-cat", code: "11", cartonCount: 19, tubeCount: 20 },
-  { productId: "keo-epoxy-cat", code: "12", cartonCount: 9, tubeCount: 12 },
-  { productId: "keo-epoxy-cat", code: "13", cartonCount: 10, tubeCount: 17 }
+  { productId: "keo-epoxy-cat", code: "12", cartonCount: 9, tubeCount: 12 }
 ];
 
 export type SampleCustomer = {
