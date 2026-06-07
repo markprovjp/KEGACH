@@ -536,8 +536,35 @@ html[data-theme="dark"] .app-header {
   border: 1px solid #e4e7ec;
   border-radius: 8px;
   background: #fff;
-  padding: 12px;
   margin-bottom: 12px;
+}
+
+.packaging-simple-form {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) 170px minmax(150px, 0.7fr) minmax(150px, 0.7fr) minmax(190px, 0.8fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.packaging-result-card {
+  display: grid;
+  gap: 2px;
+  min-height: 64px;
+  border: 1px solid #d6e4ff;
+  border-radius: 8px;
+  background: #f0f5ff;
+  padding: 8px 10px;
+}
+
+.packaging-result-card span,
+.packaging-result-card small {
+  color: #667085;
+  font-size: 12px;
+}
+
+.packaging-result-card b {
+  color: #0958d9;
+  font-size: 18px;
 }
 
 .packaging-stock-strip {
@@ -936,6 +963,20 @@ html[data-theme="dark"] .kanban-regular-panel span {
   color: #94a3b8;
 }
 
+html[data-theme="dark"] .packaging-result-card {
+  border-color: #244c83;
+  background: #142238;
+}
+
+html[data-theme="dark"] .packaging-result-card span,
+html[data-theme="dark"] .packaging-result-card small {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .packaging-result-card b {
+  color: #69b1ff;
+}
+
 html[data-theme="dark"] .kanban-next-action.blocked {
   border-color: #7f2a25;
   background: #351715;
@@ -979,6 +1020,7 @@ html[data-theme="dark"] .kanban-next-action span {
   .kanban-ops-panel,
   .kanban-filter-grid,
   .table-ops-main,
+  .packaging-simple-form,
   .order-intake-grid {
     grid-template-columns: 1fr;
   }

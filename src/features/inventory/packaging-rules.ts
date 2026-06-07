@@ -23,11 +23,12 @@ export function isPackagingTripletAllowed(input: { finishedSku?: string; rawSku?
   return Boolean(rule && rule.rawSku === input.rawSku && rule.bagSku === input.bagSku);
 }
 
-export function calculatePackagingWeights(input: { rawPackageCount: number; bagKg: number; packageKg: number }) {
-  const rawKg = roundKg(input.rawPackageCount * input.packageKg);
+export function calculatePackagingWeights(input: { rawQuantity: number; rawInputMode: "package" | "kg"; bagKg: number; packageKg: number }) {
+  const rawKg = roundKg(input.rawInputMode === "package" ? input.rawQuantity * input.packageKg : input.rawQuantity);
   const finishedKg = roundKg(rawKg + input.bagKg);
   const finishedPackageCount = input.packageKg > 0 ? roundKg(finishedKg / input.packageKg) : 0;
-  return { rawKg, finishedKg, finishedPackageCount };
+  const rawPackageCount = input.packageKg > 0 ? roundKg(rawKg / input.packageKg) : 0;
+  return { rawKg, rawPackageCount, finishedKg, finishedPackageCount };
 }
 
 function roundKg(value: number): number {

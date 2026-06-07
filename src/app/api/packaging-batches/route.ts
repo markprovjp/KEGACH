@@ -119,9 +119,12 @@ export async function POST(request: Request) {
   if (!isPackagingTripletAllowed({ finishedSku, rawSku, bagSku })) {
     return NextResponse.json({ error: "Hàng rời và túi bóng phải đúng loại thành phẩm ke/nêm được phép đóng gói" }, { status: 422 });
   }
+  const rawInputMode = body.rawInputMode === "kg" ? "kg" : "package";
+  const rawQuantity = Number(body.rawQuantity ?? 0);
   const rawPackageCount = Number(body.rawPackageCount ?? 0);
   const rawKgInput = Number(body.rawKg ?? 0);
-  const rawKg = rawKgInput > 0 ? rawKgInput : rawPackageCount * (rule?.packageKg ?? 30);
+  const packageKg = rule?.packageKg ?? 30;
+  const rawKg = rawKgInput > 0 ? rawKgInput : rawInputMode === "kg" ? rawQuantity : (rawQuantity || rawPackageCount) * packageKg;
   const finishedKgInput = Number(body.finishedKg ?? 0);
   const finishedKg = finishedKgInput > 0 ? finishedKgInput : rawKg + bagKg;
   if (rawKg <= 0 || bagKg <= 0 || finishedKg <= 0) {

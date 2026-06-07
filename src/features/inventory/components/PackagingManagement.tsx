@@ -1,7 +1,7 @@
 "use client";
 
 import { ReloadOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Form, Input, InputNumber, Select, Space, Statistic, Table, Tag } from "antd";
+import { Alert, App, Button, Collapse, Form, Input, InputNumber, Segmented, Select, Space, Statistic, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -63,6 +63,8 @@ type PackagingFormValues = {
   rawProductId: string;
   bagProductId: string;
   finishedProductId: string;
+  rawInputMode: "package" | "kg";
+  rawQuantity: number;
   rawPackageCount: number;
   rawKg: number;
   bagKg: number;
@@ -96,7 +98,8 @@ export function PackagingManagement() {
   const selectedFinishedId = Form.useWatch("finishedProductId", form);
   const selectedRawId = Form.useWatch("rawProductId", form);
   const selectedBagId = Form.useWatch("bagProductId", form);
-  const rawPackageCount = Number(Form.useWatch("rawPackageCount", form) ?? 0);
+  const rawInputMode = Form.useWatch("rawInputMode", form) ?? "package";
+  const rawQuantity = Number(Form.useWatch("rawQuantity", form) ?? 0);
   const rawKg = Number(Form.useWatch("rawKg", form) ?? 0);
   const bagKg = Number(Form.useWatch("bagKg", form) ?? 0);
 
@@ -109,13 +112,13 @@ export function PackagingManagement() {
   const selectedFinished = selectedFinishedId ? productById.get(selectedFinishedId) : undefined;
   const selectedRule = getPackagingRuleByFinishedSku(selectedFinished?.sku);
   const packageKg = selectedRule?.packageKg ?? 30;
-  const packagingPreview = calculatePackagingWeights({ rawPackageCount, bagKg, packageKg });
+  const packagingPreview = calculatePackagingWeights({ rawQuantity, rawInputMode, bagKg, packageKg });
   const hasEnoughRaw = Boolean(rawStock && rawStock.onHand >= rawKg);
   const hasEnoughBag = Boolean(bagStock && bagStock.onHand >= bagKg);
   const cannotSaveReason = !selectedRawId || !selectedBagId || !selectedFinishedId
     ? "Chọn thành phẩm cần đóng gói"
-    : rawPackageCount <= 0
-      ? "Nhập số bao hàng rời"
+    : rawQuantity <= 0
+      ? "Nhập số lượng hàng rời"
       : bagKg <= 0
         ? "Nhập kg túi bóng"
         : !hasEnoughRaw
@@ -130,14 +133,6 @@ export function PackagingManagement() {
       .map((product) => ({ value: product.id, label: `${product.name} (${product.unit})` })),
     [productBySku]
   );
-  const rawOptions = useMemo(() => packagingRules
-    .map((rule) => productBySku.get(rule.rawSku))
-    .filter((product): product is CatalogProduct => Boolean(product))
-    .map((product) => ({ value: product.id, label: `${product.name} (${product.unit})` })), [productBySku]);
-  const bagOptions = useMemo(() => packagingRules
-    .map((rule) => productBySku.get(rule.bagSku))
-    .filter((product): product is CatalogProduct => Boolean(product))
-    .map((product) => ({ value: product.id, label: `${product.name} (${product.unit})` })), [productBySku]);
   const filteredBatches = useMemo(() => {
     const normalized = normalizeSearchText(query);
     if (!normalized) return data.batches;
@@ -189,10 +184,11 @@ export function PackagingManagement() {
 
   useEffect(() => {
     form.setFieldsValue({
+      rawPackageCount: packagingPreview.rawPackageCount,
       rawKg: packagingPreview.rawKg,
       finishedKg: packagingPreview.finishedKg
     });
-  }, [form, packagingPreview.finishedKg, packagingPreview.rawKg]);
+  }, [form, packagingPreview.finishedKg, packagingPreview.rawKg, packagingPreview.rawPackageCount]);
 
   async function loadAll() {
     setLoading(true);
@@ -216,6 +212,8 @@ export function PackagingManagement() {
       rawProductId: raw?.id,
       bagProductId: bag?.id,
       finishedProductId: finished?.id,
+      rawInputMode: "package",
+      rawQuantity: 10,
       rawPackageCount: 10,
       rawKg: 300,
       bagKg: 5,
@@ -231,12 +229,14 @@ export function PackagingManagement() {
       rawProductId: rule ? productBySku.get(rule.rawSku)?.id : undefined,
       bagProductId: rule ? productBySku.get(rule.bagSku)?.id : undefined,
       rawKg: calculatePackagingWeights({
-        rawPackageCount: Number(form.getFieldValue("rawPackageCount") ?? 0),
+        rawQuantity: Number(form.getFieldValue("rawQuantity") ?? 0),
+        rawInputMode: form.getFieldValue("rawInputMode") ?? "package",
         bagKg: Number(form.getFieldValue("bagKg") ?? 0),
         packageKg: rule?.packageKg ?? 30
       }).rawKg,
       finishedKg: calculatePackagingWeights({
-        rawPackageCount: Number(form.getFieldValue("rawPackageCount") ?? 0),
+        rawQuantity: Number(form.getFieldValue("rawQuantity") ?? 0),
+        rawInputMode: form.getFieldValue("rawInputMode") ?? "package",
         bagKg: Number(form.getFieldValue("bagKg") ?? 0),
         packageKg: rule?.packageKg ?? 30
       }).finishedKg
@@ -264,8 +264,13 @@ export function PackagingManagement() {
     setData(await response.json());
     const inventoryResponse = await fetch("/api/inventory");
     setInventory(await inventoryResponse.json());
-    form.setFieldsValue({ rawPackageCount: 10, rawKg: 300, bagKg: 5, finishedKg: 305, note: "" });
+    form.setFieldsValue({ rawInputMode: "package", rawQuantity: 10, rawPackageCount: 10, rawKg: 300, bagKg: 5, finishedKg: 305, note: "" });
     message.success("Đã lưu lô đóng gói và cập nhật tồn kho");
+  }
+
+  function changeRawInputMode(nextMode: "package" | "kg") {
+    const nextQuantity = nextMode === "kg" ? packagingPreview.rawKg : packagingPreview.rawPackageCount;
+    form.setFieldsValue({ rawInputMode: nextMode, rawQuantity: nextQuantity });
   }
 
   return (
@@ -277,19 +282,35 @@ export function PackagingManagement() {
         <Statistic title="Lệch cần kiểm" value={data.reconciliation.varianceKg} suffix="kg" styles={{ content: { color: Math.abs(data.reconciliation.varianceKg) > 0.001 ? "#cf1322" : "#3f8600" } }} />
       </div>
       <Form form={form} layout="vertical" className="packaging-form">
-        <div className="form-grid compact-form-grid">
-          <Form.Item label="Thành phẩm nhập kho" name="finishedProductId"><Select showSearch optionFilterProp="label" options={finishedOptions} onChange={selectFinishedProduct} /></Form.Item>
-          <Form.Item label="Hàng rời xuất dùng" name="rawProductId"><Select disabled showSearch optionFilterProp="label" options={rawOptions} /></Form.Item>
-          <Form.Item label="Túi bóng xuất dùng" name="bagProductId"><Select disabled showSearch optionFilterProp="label" options={bagOptions} /></Form.Item>
-          <Form.Item label="Số bao hàng rời" name="rawPackageCount" rules={[{ required: true, message: "Nhập số bao hàng rời" }]}><InputNumber min={0.001} step={1} style={{ width: "100%" }} addonAfter="bao" /></Form.Item>
-          <Form.Item label="Quy cách"><Input value={`${formatNumber(packageKg)} kg / bao`} disabled /></Form.Item>
-          <Form.Item label="Kg hàng rời tự tính" name="rawKg" rules={[{ required: true, message: "Nhập kg hàng rời" }]}><InputNumber disabled min={0.001} step={1} style={{ width: "100%" }} addonAfter="kg" /></Form.Item>
-          <Form.Item label="Kg túi bóng" name="bagKg" rules={[{ required: true, message: "Nhập kg túi bóng" }]}><InputNumber min={0.001} step={0.1} style={{ width: "100%" }} addonAfter="kg" /></Form.Item>
-          <Form.Item label="Kg thành phẩm tự tính" name="finishedKg" rules={[{ required: true, message: "Nhập kg thành phẩm" }]}><InputNumber disabled min={0.001} step={1} style={{ width: "100%" }} addonAfter="kg" /></Form.Item>
-          <Form.Item label="Quy đổi thành phẩm"><Input value={`${formatNumber(packagingPreview.finishedPackageCount)} bao`} disabled /></Form.Item>
+        <Form.Item name="rawProductId" hidden><Input /></Form.Item>
+        <Form.Item name="bagProductId" hidden><Input /></Form.Item>
+        <Form.Item name="rawPackageCount" hidden><InputNumber /></Form.Item>
+        <Form.Item name="rawKg" hidden><InputNumber /></Form.Item>
+        <Form.Item name="finishedKg" hidden><InputNumber /></Form.Item>
+        <div className="packaging-simple-form">
+          <Form.Item label="Thành phẩm" name="finishedProductId">
+            <Select showSearch optionFilterProp="label" options={finishedOptions} onChange={selectFinishedProduct} />
+          </Form.Item>
+          <Form.Item label="Nhập hàng rời theo" name="rawInputMode">
+            <Segmented
+              options={[{ value: "package", label: "Bao" }, { value: "kg", label: "Kg" }]}
+              onChange={(value) => changeRawInputMode(value as "package" | "kg")}
+            />
+          </Form.Item>
+          <Form.Item label={rawInputMode === "package" ? "Số bao hàng rời" : "Kg hàng rời"} name="rawQuantity" rules={[{ required: true, message: "Nhập hàng rời" }]}>
+            <InputNumber min={0.001} step={rawInputMode === "package" ? 1 : 0.5} style={{ width: "100%" }} addonAfter={rawInputMode === "package" ? "bao" : "kg"} />
+          </Form.Item>
+          <Form.Item label="Kg túi bóng" name="bagKg" rules={[{ required: true, message: "Nhập kg túi bóng" }]}>
+            <InputNumber min={0.001} step={0.1} style={{ width: "100%" }} addonAfter="kg" />
+          </Form.Item>
+          <div className="packaging-result-card">
+            <span>Thành phẩm tự tính</span>
+            <b>{formatKg(packagingPreview.finishedKg)}</b>
+            <small>{formatNumber(packagingPreview.finishedPackageCount)} bao</small>
+          </div>
         </div>
         <div className="packaging-calculation">
-          <b>{formatNumber(rawPackageCount)} bao x {formatNumber(packageKg)} kg</b>
+          <b>{rawInputMode === "package" ? `${formatNumber(rawQuantity)} bao x ${formatNumber(packageKg)} kg` : `${formatNumber(rawQuantity)} kg hàng rời`}</b>
           <span>= {formatKg(packagingPreview.rawKg)} hàng rời</span>
           <span>+ {formatKg(bagKg)} túi bóng</span>
           <b>= {formatKg(packagingPreview.finishedKg)} thành phẩm ({formatNumber(packagingPreview.finishedPackageCount)} bao)</b>
@@ -306,36 +327,40 @@ export function PackagingManagement() {
           <Button onClick={loadAll}>Tải lại</Button>
         </Space>
       </Form>
-      <div className="packaging-audit-block">
-        <div className="section-toolbar">
-          <div>
-            <b>Đối chiếu cuối năm theo từng loại</b>
-            <div className="muted">Nhập kho chỉ tính biến động nhập thật. Điều chỉnh tay không được tính là nhập hàng rời/túi bóng.</div>
-          </div>
-        </div>
-        <Alert
-          type="info"
-          showIcon
-          title="Công thức kiểm túi bóng"
-          description="Túi phải khớp = kg thành phẩm đã đóng - kg hàng rời đã dùng. Nếu lệch túi khác 0 thì phải kiểm lại nhập kho, xuất đóng gói hoặc tồn thực tế."
-          style={{ marginBottom: 12 }}
-        />
-        <TableOperationsBar
-          total={data.materialRows.length}
-          pageSize="all"
-          onPageSizeChange={() => undefined}
-          actions={<Button icon={<ReloadOutlined />} onClick={loadAll}>Tải lại</Button>}
-        />
-        <Table
-          rowKey="key"
-          size="small"
-          loading={loading}
-          columns={materialColumns}
-          dataSource={data.materialRows}
-          pagination={false}
-          scroll={{ x: 1550 }}
-        />
-      </div>
+      <Collapse
+        className="packaging-audit-block"
+        size="small"
+        items={[{
+          key: "audit",
+          label: "Đối chiếu cuối năm theo từng loại",
+          children: (
+            <>
+              <Alert
+                type="info"
+                showIcon
+                title="Công thức kiểm túi bóng"
+                description="Túi phải khớp = kg thành phẩm đã đóng - kg hàng rời đã dùng. Nhập kho chỉ tính nhập thật, không tính điều chỉnh tay."
+                style={{ marginBottom: 12 }}
+              />
+              <TableOperationsBar
+                total={data.materialRows.length}
+                pageSize="all"
+                onPageSizeChange={() => undefined}
+                actions={<Button icon={<ReloadOutlined />} onClick={loadAll}>Tải lại</Button>}
+              />
+              <Table
+                rowKey="key"
+                size="small"
+                loading={loading}
+                columns={materialColumns}
+                dataSource={data.materialRows}
+                pagination={false}
+                scroll={{ x: 1550 }}
+              />
+            </>
+          )
+        }]}
+      />
       <TableOperationsBar
         total={filteredBatches.length}
         pageSize={pageSize}

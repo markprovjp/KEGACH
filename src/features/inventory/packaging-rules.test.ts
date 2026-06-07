@@ -24,10 +24,20 @@ describe("packaging rules", () => {
   });
 
   it("calculates finished kg and finished bag count from raw bags plus plastic bag kg", () => {
-    expect(calculatePackagingWeights({ rawPackageCount: 10, bagKg: 5, packageKg: 30 })).toEqual({
+    expect(calculatePackagingWeights({ rawQuantity: 10, rawInputMode: "package", bagKg: 5, packageKg: 30 })).toEqual({
       rawKg: 300,
+      rawPackageCount: 10,
       finishedKg: 305,
       finishedPackageCount: 10.167
+    });
+  });
+
+  it("also accepts raw stock in kg when warehouse count is not by bag", () => {
+    expect(calculatePackagingWeights({ rawQuantity: 100, rawInputMode: "kg", bagKg: 6, packageKg: 30 })).toEqual({
+      rawKg: 100,
+      rawPackageCount: 3.333,
+      finishedKg: 106,
+      finishedPackageCount: 3.533
     });
   });
 });
