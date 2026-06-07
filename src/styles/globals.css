@@ -269,6 +269,18 @@ a {
   margin-bottom: 12px;
 }
 
+.packaging-stock-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.packaging-stock-strip .ant-tag {
+  margin-inline-end: 0;
+  padding: 3px 8px;
+}
+
 .table-fallback {
   min-height: 120px;
   display: flex;

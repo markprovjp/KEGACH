@@ -25,6 +25,10 @@ type KiotProductPage = {
   Data?: KiotProduct[];
 };
 
+type ExistingProduct = NonNullable<Awaited<ReturnType<typeof prisma.product.findUnique>>> & {
+  aliases?: Array<{ value: string }>;
+};
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -40,20 +44,23 @@ async function main() {
 
   let created = 0;
   let updated = 0;
+  let mergedDuplicates = 0;
   for (const product of products.values()) {
-    const sku = product.Code!.trim();
-    const existing = await prisma.product.findUnique({ where: { sku }, include: { inventoryMovement: true } });
+    const sku = canonicalSkuForKiotProduct(product);
+    const existing = await prisma.product.findUnique({ where: { sku }, include: { aliases: true, inventoryMovement: true } });
     const saved = await prisma.product.upsert({
       where: { sku },
-      update: toProductUpdatePayload(product),
-      create: toProductCreatePayload(product)
+      update: toProductUpdatePayload(product, sku, existing ?? undefined),
+      create: toProductCreatePayload(product, sku)
     });
-    await syncOnHand(saved.id, Number(product.OnHand ?? 0), existing?.inventoryMovement ?? [], product);
+    mergedDuplicates += await mergeOldKiotDuplicate(product.Code!.trim(), saved.id);
+    const movements = await prisma.inventoryMovement.findMany({ where: { productId: saved.id } });
+    await syncOnHand(saved.id, Number(product.OnHand ?? 0), movements, product);
     if (existing) updated += 1;
     else created += 1;
   }
 
-  console.log(JSON.stringify({ pages: pages.length, imported: products.size, created, updated }, null, 2));
+  console.log(JSON.stringify({ pages: pages.length, imported: products.size, created, updated, mergedDuplicates }, null, 2));
 }
 
 export function parseKiotProductPages(rawText: string): KiotProductPage[] {
@@ -64,25 +71,57 @@ export function parseKiotProductPages(rawText: string): KiotProductPage[] {
     .map((chunk) => JSON.parse(chunk) as KiotProductPage);
 }
 
-function toProductCorePayload(product: KiotProduct) {
-  const name = (product.FullName || product.Name)!.trim();
+export function canonicalSkuForKiotProduct(product: KiotProduct): string {
+  const name = normalizeSearchText(product.Name || product.FullName || "");
+  if (name === "nem") return "nem";
+  if (name.includes("ke can bang 1mm")) return "ke-can-bang-1mm";
+  if (name.includes("ke can bang 1.5mm")) return "ke-can-bang-1-5mm";
+  if (name.includes("ke can bang 2mm")) return "ke-can-bang-2mm";
+  if (name.includes("ke can bang 3mm")) return "ke-can-bang-3mm";
+  if (name.includes("ke chu thap 1mm")) return "ke-chu-thap-1mm";
+  if (name.includes("ke chu thap 1.5mm")) return "ke-chu-thap-1-5mm";
+  if (name.includes("ke chu thap 2mm")) return "ke-chu-thap-2mm";
+  if (name.includes("ke chu thap 3mm")) return "ke-chu-thap-3mm";
+  if (name.includes("ke chu thap 5mm")) return "ke-chu-thap-5mm";
+  return product.Code!.trim();
+}
+
+function displayNameForKiotProduct(product: KiotProduct, sku: string): string {
+  const canonicalNames: Record<string, string> = {
+    "ke-can-bang-1mm": "Ke cân bằng 1MM",
+    "ke-can-bang-1-5mm": "Ke cân bằng 1.5MM",
+    "ke-can-bang-2mm": "Ke cân bằng 2MM",
+    "ke-can-bang-3mm": "Ke cân bằng 3MM",
+    "ke-chu-thap-1mm": "Ke chữ thập 1MM",
+    "ke-chu-thap-1-5mm": "Ke chữ thập 1.5MM",
+    "ke-chu-thap-2mm": "Ke chữ thập 2MM",
+    "ke-chu-thap-3mm": "Ke chữ thập 3MM",
+    "ke-chu-thap-5mm": "Ke chữ thập 5MM",
+    nem: "Nêm"
+  };
+  return canonicalNames[sku] ?? (product.FullName || product.Name)!.trim();
+}
+
+function toProductCorePayload(product: KiotProduct, sku: string, existing?: ExistingProduct) {
+  const name = displayNameForKiotProduct(product, sku);
+  const kiotPrice = Number(product.BasePrice ?? 0);
   return {
-    sku: product.Code!.trim(),
+    sku,
     name,
     unit: inferUnit(product),
-    defaultPrice: Number(product.BasePrice ?? 0),
-    distributorPrice: null,
+    defaultPrice: kiotPrice > 0 ? kiotPrice : existing?.defaultPrice ?? 0,
+    distributorPrice: existing?.distributorPrice ?? null,
     packageRule: inferPackageRule(product),
-    description: buildDescription(product),
+    description: buildDescription(product, existing?.description ?? undefined),
     weightPerUnitKg: inferWeightKg(product)
   };
 }
 
-function toProductUpdatePayload(product: KiotProduct) {
-  const name = (product.FullName || product.Name)!.trim();
-  const aliases = buildAliases(product, name);
+function toProductUpdatePayload(product: KiotProduct, sku: string, existing?: ExistingProduct) {
+  const name = displayNameForKiotProduct(product, sku);
+  const aliases = buildAliases(product, name, existing?.aliases?.map((alias) => alias.value));
   return {
-    ...toProductCorePayload(product),
+    ...toProductCorePayload(product, sku, existing),
     aliases: {
       deleteMany: {},
       create: aliases.map((value) => ({ value }))
@@ -93,20 +132,20 @@ function toProductUpdatePayload(product: KiotProduct) {
   };
 }
 
-function toProductCreatePayload(product: KiotProduct) {
-  const name = (product.FullName || product.Name)!.trim();
+function toProductCreatePayload(product: KiotProduct, sku: string) {
+  const name = displayNameForKiotProduct(product, sku);
   const aliases = buildAliases(product, name);
   return {
-    ...toProductCorePayload(product),
+    ...toProductCorePayload(product, sku),
     aliases: {
       create: aliases.map((value) => ({ value }))
     }
   };
 }
 
-function buildAliases(product: KiotProduct, name: string): string[] {
+function buildAliases(product: KiotProduct, name: string, existingAliases: string[] = []): string[] {
   const aliases = new Set<string>();
-  for (const value of [product.Code, product.Name, product.NameOriginal, name]) {
+  for (const value of [...existingAliases, product.Code, product.Name, product.NameOriginal, name]) {
     const cleaned = value?.trim();
     if (cleaned && cleaned !== name) aliases.add(cleaned);
   }
@@ -147,14 +186,41 @@ function inferWeightKg(product: KiotProduct): number {
   return 0;
 }
 
-function buildDescription(product: KiotProduct): string | null {
+function buildDescription(product: KiotProduct, existingDescription?: string): string | null {
   const parts = [
+    existingDescription?.trim(),
     product.Description?.trim(),
     product.CategoryName ? `Nhóm Kiot: ${product.CategoryName}` : undefined,
     product.Code ? `Mã Kiot: ${product.Code}` : undefined,
     product.ProductId || product.Id ? `ID Kiot: ${product.ProductId || product.Id}` : undefined
   ].filter(Boolean);
   return parts.length ? parts.join(" | ") : null;
+}
+
+async function mergeOldKiotDuplicate(sourceSku: string, targetProductId: string): Promise<number> {
+  const source = await prisma.product.findUnique({
+    where: { sku: sourceSku },
+    include: { inventoryMovement: true }
+  });
+  if (!source || source.id === targetProductId) return 0;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.productAlias.deleteMany({ where: { productId: source.id } });
+    await tx.productVariant.deleteMany({ where: { productId: source.id } });
+    await tx.orderItem.updateMany({ where: { productId: source.id }, data: { productId: targetProductId } });
+    await tx.packagingBatch.updateMany({ where: { rawProductId: source.id }, data: { rawProductId: targetProductId } });
+    await tx.packagingBatch.updateMany({ where: { bagProductId: source.id }, data: { bagProductId: targetProductId } });
+    await tx.packagingBatch.updateMany({ where: { finishedProductId: source.id }, data: { finishedProductId: targetProductId } });
+    for (const movement of source.inventoryMovement) {
+      if (movement.type === "manual_adjustment" && movement.note?.startsWith(`Sync tồn Kiot ${sourceSku}:`)) {
+        await tx.inventoryMovement.delete({ where: { id: movement.id } });
+      } else {
+        await tx.inventoryMovement.update({ where: { id: movement.id }, data: { productId: targetProductId } });
+      }
+    }
+    await tx.product.delete({ where: { id: source.id } });
+  });
+  return 1;
 }
 
 async function syncOnHand(productId: string, targetOnHand: number, currentMovements: Array<{ type: string; quantity: number }>, product: KiotProduct) {
@@ -175,11 +241,13 @@ async function syncOnHand(productId: string, targetOnHand: number, currentMoveme
   });
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  main()
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
