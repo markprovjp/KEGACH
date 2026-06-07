@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calculatePackagingReconciliation } from "@/features/inventory/inventory-ledger";
-import { isPackagingTripletAllowed } from "@/features/inventory/packaging-rules";
+import { getPackagingRuleByFinishedSku, isPackagingTripletAllowed } from "@/features/inventory/packaging-rules";
 
 export async function GET() {
   const batches = await prisma.packagingBatch.findMany({
@@ -42,29 +42,32 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const rawKg = Number(body.rawKg ?? 0);
   const bagKg = Number(body.bagKg ?? 0);
-  const finishedKg = Number(body.finishedKg ?? 0);
   if (!body.rawProductId || !body.bagProductId || !body.finishedProductId) {
     return NextResponse.json({ error: "Thiếu sản phẩm hàng rời, túi bóng hoặc thành phẩm" }, { status: 422 });
-  }
-  if (rawKg <= 0 || bagKg <= 0 || finishedKg <= 0) {
-    return NextResponse.json({ error: "Khối lượng nêm rời, túi bóng và thành phẩm phải lớn hơn 0" }, { status: 422 });
-  }
-  if (finishedKg < rawKg) {
-    return NextResponse.json({ error: "Thành phẩm không được nhỏ hơn lượng nêm rời đã dùng" }, { status: 422 });
   }
   const selectedProducts = await prisma.product.findMany({
     where: { id: { in: [body.rawProductId, body.bagProductId, body.finishedProductId] } },
     select: { id: true, sku: true }
   });
   const selectedById = new Map(selectedProducts.map((product) => [product.id, product]));
-  if (!isPackagingTripletAllowed({
-    finishedSku: selectedById.get(body.finishedProductId)?.sku,
-    rawSku: selectedById.get(body.rawProductId)?.sku,
-    bagSku: selectedById.get(body.bagProductId)?.sku
-  })) {
+  const finishedSku = selectedById.get(body.finishedProductId)?.sku;
+  const rawSku = selectedById.get(body.rawProductId)?.sku;
+  const bagSku = selectedById.get(body.bagProductId)?.sku;
+  const rule = getPackagingRuleByFinishedSku(finishedSku);
+  if (!isPackagingTripletAllowed({ finishedSku, rawSku, bagSku })) {
     return NextResponse.json({ error: "Hàng rời và túi bóng phải đúng loại thành phẩm ke/nêm được phép đóng gói" }, { status: 422 });
+  }
+  const rawPackageCount = Number(body.rawPackageCount ?? 0);
+  const rawKgInput = Number(body.rawKg ?? 0);
+  const rawKg = rawKgInput > 0 ? rawKgInput : rawPackageCount * (rule?.packageKg ?? 30);
+  const finishedKgInput = Number(body.finishedKg ?? 0);
+  const finishedKg = finishedKgInput > 0 ? finishedKgInput : rawKg + bagKg;
+  if (rawKg <= 0 || bagKg <= 0 || finishedKg <= 0) {
+    return NextResponse.json({ error: "Khối lượng hàng rời, túi bóng và thành phẩm phải lớn hơn 0" }, { status: 422 });
+  }
+  if (finishedKg < rawKg) {
+    return NextResponse.json({ error: "Thành phẩm không được nhỏ hơn lượng hàng rời đã dùng" }, { status: 422 });
   }
 
   const [rawOnHand, bagOnHand] = await Promise.all([getOnHand(body.rawProductId), getOnHand(body.bagProductId)]);

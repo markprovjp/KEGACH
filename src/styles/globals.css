@@ -544,6 +544,23 @@ html[data-theme="dark"] .app-header {
   padding: 3px 8px;
 }
 
+.packaging-calculation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 10px;
+  margin: 0 0 12px;
+  color: #344054;
+}
+
+.packaging-calculation b {
+  color: #101828;
+}
+
 .table-fallback {
   min-height: 120px;
   display: flex;
@@ -761,6 +778,7 @@ html[data-theme="dark"] .order-mode-panel,
 html[data-theme="dark"] .manual-invoice,
 html[data-theme="dark"] .workflow-panel,
 html[data-theme="dark"] .packaging-form,
+html[data-theme="dark"] .packaging-calculation,
 html[data-theme="dark"] .table-ops-bar,
 html[data-theme="dark"] .kanban-card,
 html[data-theme="dark"] .kanban-summary-card,
@@ -777,6 +795,14 @@ html[data-theme="dark"] .table-fallback,
 html[data-theme="dark"] .kanban-column {
   border-color: #263241;
   background: #1f2937;
+}
+
+html[data-theme="dark"] .packaging-calculation b {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .packaging-calculation {
+  color: #cbd5e1;
 }
 
 html[data-theme="dark"] .parse-line-match {
