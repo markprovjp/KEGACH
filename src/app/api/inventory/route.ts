@@ -24,8 +24,10 @@ export async function GET() {
     return {
       key: product.id,
       productId: product.id,
+      sku: product.sku,
       product: product.name,
       unit: product.unit,
+      isActive: product.isActive,
       onHand: stock.onHand,
       reserved: stock.reserved,
       available: stock.onHand - stock.reserved,

@@ -1,7 +1,7 @@
 "use client";
 
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SaveOutlined, UploadOutlined } from "@ant-design/icons";
-import { App, Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Table, Tag, Typography, Upload } from "antd";
+import { App, Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, Upload } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
@@ -25,6 +25,7 @@ export function ProductManagement() {
   const [pageSize, setPageSize] = useState<PageSizeValue>(10);
   const [query, setQuery] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("active");
   const [form] = Form.useForm<ProductFormValues>();
 
   useEffect(() => {
@@ -36,15 +37,17 @@ export function ProductManagement() {
     return products.filter((product) => {
       const matchesText = !normalized || buildProductSearchText(product).includes(normalized);
       const matchesUnit = unitFilter === "all" || product.unit === unitFilter;
-      return matchesText && matchesUnit;
+      const matchesActive = activeFilter === "all" || (activeFilter === "active" ? product.isActive !== false : product.isActive === false);
+      return matchesText && matchesUnit && matchesActive;
     });
-  }, [products, query, unitFilter]);
+  }, [activeFilter, products, query, unitFilter]);
 
   const unitOptions = useMemo(() => Array.from(new Set(products.map((product) => product.unit).filter(Boolean))).sort((a, b) => a.localeCompare(b, "vi")), [products]);
-  const hasActiveFilters = Boolean(query.trim()) || unitFilter !== "all";
+  const hasActiveFilters = Boolean(query.trim()) || unitFilter !== "all" || activeFilter !== "active";
   const exportRows = useMemo(() => filteredProducts.map((product) => ({
     sku: product.sku ?? "",
     name: product.name,
+    isActive: product.isActive === false ? "hidden" : "active",
     unit: product.unit,
     defaultPrice: String(product.defaultPrice ?? 0),
     distributorPrice: product.distributorPrice == null ? "" : String(product.distributorPrice),
@@ -63,6 +66,20 @@ export function ProductManagement() {
         render: (value?: string) => value ? <Image src={value} alt="Ảnh sản phẩm" width={44} height={44} style={{ objectFit: "cover", borderRadius: 6 }} /> : <div className="image-placeholder">Ảnh</div>
       },
       { title: "Sản phẩm", dataIndex: "name", fixed: "left", width: 260 },
+      {
+        title: "Bán hàng",
+        dataIndex: "isActive",
+        width: 150,
+        render: (_, row) => (
+          <Select
+            size="small"
+            value={row.isActive === false ? "hidden" : "active"}
+            onChange={(value) => updateProductStatus(row, value === "active")}
+            options={[{ value: "active", label: "Đang bán" }, { value: "hidden", label: "Ẩn/không bán" }]}
+            style={{ width: 132 }}
+          />
+        )
+      },
       { title: "Giá đại lý", dataIndex: "defaultPrice", align: "right", width: 120, render: (value) => `${Number(value).toLocaleString("vi-VN")}đ` },
       { title: "Giá phân phối", dataIndex: "distributorPrice", align: "right", width: 130, render: (value) => value == null ? "-" : `${Number(value).toLocaleString("vi-VN")}đ` },
       { title: "Đơn vị", dataIndex: "unit", width: 90 },
@@ -108,7 +125,7 @@ export function ProductManagement() {
   }
 
   function openEdit(row?: ProductRow) {
-    const next = row ?? { key: crypto.randomUUID(), id: crypto.randomUUID(), sku: "", name: "", unit: "bao", defaultPrice: 0, packageRule: "", weightPerUnitKg: 0, aliases: [], variants: [] };
+    const next = row ?? { key: crypto.randomUUID(), id: crypto.randomUUID(), sku: "", name: "", unit: "bao", defaultPrice: 0, packageRule: "", weightPerUnitKg: 0, isActive: true, aliases: [], variants: [] };
     setEditing(next);
     setImageUrl(next.imageUrl);
     form.setFieldsValue({
@@ -130,6 +147,7 @@ export function ProductManagement() {
       packageRule: values.packageRule,
       description: values.description,
       imageUrl,
+      isActive: values.isActive !== false,
       weightPerUnitKg: Number(values.weightPerUnitKg ?? 0),
       aliases: String(values.aliasesText ?? "")
         .split(",")
@@ -163,6 +181,20 @@ export function ProductManagement() {
     message.success("Đã xóa sản phẩm khỏi database");
   }
 
+  async function updateProductStatus(row: ProductRow, isActive: boolean) {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...row, isActive })
+    });
+    if (!response.ok) {
+      message.error("Không cập nhật được trạng thái sản phẩm");
+      return;
+    }
+    setProducts((current) => current.map((product) => (product.id === row.id ? { ...product, isActive } : product)));
+    message.success(isActive ? "Đã bật bán sản phẩm" : "Đã ẩn sản phẩm khỏi lên đơn");
+  }
+
   async function importProducts(rows: CsvRow[]) {
     if (!rows.length) {
       message.warning("File Excel/CSV không có dữ liệu");
@@ -184,6 +216,7 @@ export function ProductManagement() {
           packageRule: row.packageRule || row["Quy cách"] || "",
           description: row.description || row["Mô tả"] || "",
           weightPerUnitKg: Number(row.weightPerUnitKg || row["Kg/đơn vị"] || 0),
+          isActive: !["hidden", "ẩn", "không bán", "inactive", "false", "0"].includes(String(row.isActive || row["Bán hàng"] || "active").trim().toLowerCase()),
           aliases: String(row.aliases || row["Alias"] || name).split(",").map((value) => ({ value: value.trim() })).filter((alias) => alias.value)
         })
       });
@@ -211,8 +244,11 @@ export function ProductManagement() {
         searchValue={query}
         onSearchChange={setQuery}
         searchPlaceholder="Tìm sản phẩm, alias, B14, CAT14..."
-        filters={[{ key: "unit", label: "Đơn vị", value: unitFilter, defaultValue: "all", onChange: (value) => setUnitFilter(String(value)), showSearch: true, options: [{ value: "all", label: "Tất cả" }, ...unitOptions.map((value) => ({ value, label: value }))] }]}
-        onClearFilters={() => { setQuery(""); setUnitFilter("all"); }}
+        filters={[
+          { key: "active", label: "Bán hàng", value: activeFilter, defaultValue: "active", onChange: (value) => setActiveFilter(String(value)), options: [{ value: "active", label: "Đang bán" }, { value: "hidden", label: "Đã ẩn" }, { value: "all", label: "Tất cả" }] },
+          { key: "unit", label: "Đơn vị", value: unitFilter, defaultValue: "all", onChange: (value) => setUnitFilter(String(value)), showSearch: true, options: [{ value: "all", label: "Tất cả" }, ...unitOptions.map((value) => ({ value, label: value }))] }
+        ]}
+        onClearFilters={() => { setQuery(""); setUnitFilter("all"); setActiveFilter("active"); }}
         clearDisabled={!hasActiveFilters}
         actions={(
           <>
@@ -224,7 +260,7 @@ export function ProductManagement() {
           </>
         )}
       />
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length, setPageSize)} scroll={{ x: 1660, y: 620 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length, setPageSize)} scroll={{ x: 1800, y: 620 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm sản phẩm"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveProduct} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Ảnh sản phẩm">
@@ -237,6 +273,7 @@ export function ProductManagement() {
           </Form.Item>
           <Form.Item label="Tên sản phẩm" name="name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item label="Mã/SKU" name="sku"><Input /></Form.Item>
+          <Form.Item label="Trạng thái bán hàng" name="isActive"><Select options={[{ value: true, label: "Đang bán" }, { value: false, label: "Ẩn/không bán" }]} /></Form.Item>
           <Space.Compact style={{ width: "100%" }}>
             <Form.Item label="Giá đại lý" name="defaultPrice" style={{ width: "34%" }}><InputNumber min={0} step={1000} style={{ width: "100%" }} /></Form.Item>
             <Form.Item label="Giá phân phối" name="distributorPrice" style={{ width: "33%" }}><InputNumber min={0} step={1000} style={{ width: "100%" }} /></Form.Item>

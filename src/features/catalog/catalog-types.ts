@@ -19,6 +19,7 @@ export type CatalogProduct = {
   packageRule?: string;
   description?: string;
   imageUrl?: string;
+  isActive?: boolean;
   weightPerUnitKg?: number;
   aliases: ProductAlias[];
   variants?: ProductVariant[];

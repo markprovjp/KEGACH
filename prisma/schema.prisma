@@ -51,6 +51,7 @@ model Product {
   packageRule       String?
   description       String?
   imageUrl          String?
+  isActive          Boolean             @default(true)
   aliases           ProductAlias[]
   variants          ProductVariant[]
   orderItems        OrderItem[]

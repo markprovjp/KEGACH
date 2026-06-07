@@ -40,7 +40,7 @@ export function ProductSearch({ products = [], value, onChange, onCreateRequest 
           ) : null}
         </>
       )}
-      options={products.map((product) => ({
+      options={products.filter((product) => product.isActive !== false || product.id === value).map((product) => ({
         value: product.id,
         displayLabel: product.name,
         label: (

@@ -16,6 +16,7 @@ export async function GET() {
     packageRule: product.packageRule,
     description: product.description ?? undefined,
     imageUrl: product.imageUrl,
+    isActive: product.isActive,
     weightPerUnitKg: product.weightPerUnitKg,
     aliases: product.aliases.map((alias) => ({ value: alias.value })),
     variants: product.variants.map((variant) => ({ code: variant.code, cartonCount: variant.cartonCount, tubeCount: variant.tubeCount, note: variant.note ?? undefined }))
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       packageRule: body.packageRule || null,
       description: body.description || null,
       imageUrl: body.imageUrl || null,
+      isActive: body.isActive !== false,
       weightPerUnitKg: Number(body.weightPerUnitKg ?? 0),
       aliases: {
         deleteMany: {},
@@ -59,6 +61,7 @@ export async function POST(request: Request) {
       packageRule: body.packageRule || null,
       description: body.description || null,
       imageUrl: body.imageUrl || null,
+      isActive: body.isActive !== false,
       weightPerUnitKg: Number(body.weightPerUnitKg ?? 0),
       aliases: {
         create: (body.aliases ?? []).map((alias: { value: string }) => ({ value: alias.value }))
@@ -85,6 +88,7 @@ export async function POST(request: Request) {
     packageRule: product.packageRule,
     description: product.description ?? undefined,
     imageUrl: product.imageUrl,
+    isActive: product.isActive,
     weightPerUnitKg: product.weightPerUnitKg,
     aliases: product.aliases.map((alias) => ({ value: alias.value })),
     variants: product.variants.map((variant) => ({ code: variant.code, cartonCount: variant.cartonCount, tubeCount: variant.tubeCount, note: variant.note ?? undefined }))
