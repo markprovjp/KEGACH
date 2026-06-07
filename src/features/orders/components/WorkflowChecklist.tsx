@@ -46,7 +46,7 @@ export function WorkflowChecklist({ order, value, onChange }: { order: WorkflowO
         current={currentPhase}
         items={phaseState.map((phase) => ({
           title: phase.title,
-          description: phase.required ? `${phase.completed}/${phase.required}` : "Chưa cần",
+          content: phase.required ? `${phase.completed}/${phase.required}` : "Chưa cần",
           status: phase.required === 0 ? "wait" : phase.missing ? "process" : "finish"
         }))}
       />
