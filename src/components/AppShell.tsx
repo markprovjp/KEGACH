@@ -6,14 +6,18 @@ import {
   CarOutlined,
   DashboardOutlined,
   DatabaseOutlined,
-  PlusCircleOutlined
+  MoonOutlined,
+  PlusCircleOutlined,
+  SunOutlined
 } from "@ant-design/icons";
-import { Layout, Menu } from "antd";
+import { ConfigProvider, Layout, Menu, Switch, theme } from "antd";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const { Header, Sider, Content } = Layout;
+type ThemeMode = "light" | "dark";
 
 const menuItems = [
   { key: "/", icon: <DashboardOutlined />, label: <Link href="/">Tổng quan</Link> },
@@ -27,22 +31,58 @@ const menuItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const selectedKey = menuItems.some((item) => item.key === pathname) ? pathname : "/";
+  const [themeMode, setThemeMode] = useState<ThemeMode>("light");
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("kegach-theme");
+    if (stored === "dark" || stored === "light") setThemeMode(stored);
+    else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setThemeMode("dark");
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeMode;
+    window.localStorage.setItem("kegach-theme", themeMode);
+  }, [themeMode]);
+
+  const antdTheme = useMemo(() => ({
+    algorithm: themeMode === "dark" ? [theme.darkAlgorithm, theme.compactAlgorithm] : [theme.defaultAlgorithm, theme.compactAlgorithm],
+    token: {
+      colorPrimary: "#1677ff",
+      borderRadius: 8,
+      fontFamily: '"Segoe UI", sans-serif'
+    },
+    components: {
+      Layout: {
+        bodyBg: themeMode === "dark" ? "#0f172a" : "#f4f6f8",
+        headerBg: themeMode === "dark" ? "#111827" : "#ffffff",
+        siderBg: themeMode === "dark" ? "#111827" : "#ffffff"
+      }
+    }
+  }), [themeMode]);
 
   return (
-    <Layout className="page-shell">
-      <Sider width={236} theme="light">
-        <div style={{ padding: 18 }}>
-          <h2 className="brand-title">KeGach Ops</h2>
-          <div className="brand-subtitle">Kiot là sổ cái, app là vận hành</div>
-        </div>
-        <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
-      </Sider>
-      <Layout>
-        <Header style={{ background: "#fff", borderBottom: "1px solid #e4e7ec", height: 56, padding: "0 20px" }}>
-          <strong>Long Hải Plastic Operations</strong>
-        </Header>
-        <Content className="content-shell">{children}</Content>
+    <ConfigProvider theme={antdTheme}>
+      <Layout className={`page-shell theme-${themeMode}`}>
+        <Sider width={236} theme={themeMode}>
+          <div className="brand-block">
+            <h2 className="brand-title">KeGach Ops</h2>
+            <div className="brand-subtitle">Kiot là sổ cái, app là vận hành</div>
+          </div>
+          <Menu theme={themeMode} mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
+        </Sider>
+        <Layout>
+          <Header className="app-header">
+            <strong>Long Hải Plastic Operations</strong>
+            <Switch
+              checked={themeMode === "dark"}
+              checkedChildren={<MoonOutlined />}
+              unCheckedChildren={<SunOutlined />}
+              onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
+            />
+          </Header>
+          <Content className="content-shell">{children}</Content>
+        </Layout>
       </Layout>
-    </Layout>
+    </ConfigProvider>
   );
 }

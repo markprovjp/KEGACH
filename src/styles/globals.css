@@ -9,6 +9,11 @@ body {
   font-family: "Segoe UI", sans-serif;
 }
 
+html[data-theme="dark"] body {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -21,6 +26,25 @@ a {
 .content-shell {
   padding: 20px;
   overflow: auto;
+}
+
+.brand-block {
+  padding: 18px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 20px;
+  border-bottom: 1px solid #e4e7ec;
+  background: #fff;
+}
+
+.theme-dark .app-header {
+  border-bottom-color: #263241;
+  background: #111827;
 }
 
 .page-title {
@@ -596,6 +620,60 @@ a {
 
 .muted {
   color: #667085;
+}
+
+.theme-dark .brand-subtitle,
+.theme-dark .page-subtitle,
+.theme-dark .muted,
+.theme-dark .bar-value,
+.theme-dark .bar-label,
+.theme-dark .order-facts span,
+.theme-dark .manual-invoice-total span,
+.theme-dark .product-search-option span,
+.theme-dark .kanban-column-more,
+.theme-dark .table-fallback,
+.theme-dark .image-placeholder,
+.theme-dark .upload-preview-empty {
+  color: #94a3b8;
+}
+
+.theme-dark .order-workbench,
+.theme-dark .order-mode-panel,
+.theme-dark .manual-invoice,
+.theme-dark .workflow-panel,
+.theme-dark .packaging-form,
+.theme-dark .kanban-card,
+.theme-dark .kanban-summary-card,
+.theme-dark .static-card {
+  border-color: #263241;
+  background: #111827;
+}
+
+.theme-dark .parse-panel,
+.theme-dark .workflow-phase-box,
+.theme-dark .dispatch-card,
+.theme-dark .packaging-summary .ant-statistic,
+.theme-dark .table-fallback,
+.theme-dark .kanban-column {
+  border-color: #263241;
+  background: #1f2937;
+}
+
+.theme-dark .parse-line-match {
+  border-color: #2f5d40;
+  background: #17321f;
+}
+
+.theme-dark .bar-track,
+.theme-dark .image-placeholder,
+.theme-dark .upload-preview-empty {
+  border-color: #334155;
+  background: #1f2937;
+}
+
+.theme-dark .order-action-bar {
+  border-top-color: #263241;
+  background: rgba(15, 23, 42, 0.94);
 }
 
 @media (max-width: 760px) {
