@@ -71,7 +71,8 @@ export async function POST(request: Request) {
     freightPayer: body.freightPayer || "customer",
     packageCount: Number(body.packageCount ?? 0),
     estimatedWeightKg: Number(body.estimatedWeightKg ?? 0),
-    carrierName: body.carrierName || null
+    carrierName: body.carrierName || null,
+    driverName: body.driverName || null
   };
   const missing = getWorkflowMissing({
     status: isOfficial && body.kiotInvoiceCode ? "kiot_linked" : "draft",
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
     ...shipmentInput,
     workflowChecks
   });
-  if (isOfficial && missing.some((item) => item.includes("thiếu") || item.includes("phải có") || item.includes("chưa chọn"))) {
+  if (isOfficial && missing.length > 0) {
     return NextResponse.json({ error: "Đơn chính thức chưa đủ quy trình", missing }, { status: 422 });
   }
   const count = await prisma.order.count();

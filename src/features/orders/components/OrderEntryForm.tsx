@@ -34,10 +34,19 @@ type OrderFormValues = {
   paymentStatus?: PaymentStatus;
   deliveryMode?: "truck_share" | "direct_truck";
   freightPayer?: "customer" | "company";
+  carrierName?: string;
+  driverName?: string;
   packageCount?: number;
   estimatedWeightKg?: number;
   workflowChecks?: string[];
   note?: string;
+};
+
+type CarrierOption = {
+  id: string;
+  name: string;
+  phone: string;
+  route: string;
 };
 
 const defaultInvoiceText = `HÓA ĐƠN BÁN HÀNG
@@ -74,6 +83,7 @@ Còn lại:
 export function OrderEntryForm() {
   const [form] = Form.useForm<OrderFormValues>();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [carriers, setCarriers] = useState<CarrierOption[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [rawText, setRawText] = useState(defaultInvoiceText);
   const [saving, setSaving] = useState(false);
@@ -83,6 +93,7 @@ export function OrderEntryForm() {
 
   useEffect(() => {
     void loadProducts();
+    fetch("/api/carriers").then((response) => response.json()).then(setCarriers).catch(() => setCarriers([]));
   }, []);
 
   const columns: ColumnsType<Line> = [
@@ -250,6 +261,8 @@ export function OrderEntryForm() {
                   <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
                   <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Gửi xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
                   <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
+                  <Form.Item label="Nhà xe / đơn vị giao" name="carrierName"><Select showSearch allowClear optionFilterProp="label" options={carriers.map((carrier) => ({ value: carrier.name, label: `${carrier.name} - ${carrier.route}` }))} /></Form.Item>
+                  <Form.Item label="Tài xế / ghi chú lấy hàng" name="driverName"><Input /></Form.Item>
                   <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
                   <Form.Item label="Khối lượng ước tính (kg)" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
                 </div>
@@ -273,6 +286,7 @@ export function OrderEntryForm() {
                         codAmount: watchedValues.codAmount,
                         paymentStatus: watchedValues.paymentStatus,
                         deliveryMode: watchedValues.deliveryMode,
+                        carrierName: watchedValues.carrierName,
                         packageCount: watchedValues.packageCount,
                         estimatedWeightKg: watchedValues.estimatedWeightKg
                       }}
