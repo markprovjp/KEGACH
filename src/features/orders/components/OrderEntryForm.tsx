@@ -147,6 +147,7 @@ export function OrderEntryForm() {
     {
       title: "Tên hàng",
       dataIndex: "productId",
+      width: 420,
       render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} />
     },
     {
@@ -195,6 +196,7 @@ export function OrderEntryForm() {
     {
       title: "Sản phẩm",
       dataIndex: "productId",
+      width: 420,
       render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} />
     },
     {
@@ -496,7 +498,7 @@ export function OrderEntryForm() {
                         <Button icon={<PlusOutlined />} onClick={addLine}>Thêm sản phẩm</Button>
                         <Tag color={stockWarnings.length ? "red" : "green"}>{stockWarnings.length ? `Thiếu ${stockWarnings.length} dòng` : "Đủ tồn"}</Tag>
                       </div>
-                      <Table rowKey="key" size="small" pagination={false} columns={invoiceColumns} dataSource={lines} scroll={{ x: 980 }} />
+                      <Table rowKey="key" size="small" pagination={false} columns={invoiceColumns} dataSource={lines} scroll={{ x: 1280 }} />
                       <div className="manual-invoice-total">
                         <span>Tổng số lượng</span><b>{totalQuantity.toLocaleString("vi-VN")}</b>
                         <span>Tổng thanh toán</span><b>{totalAmount.toLocaleString("vi-VN")}đ</b>
@@ -541,7 +543,7 @@ export function OrderEntryForm() {
                     <Button icon={<PlusOutlined />} onClick={addLine}>Thêm dòng</Button>
                     <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
                   </div>
-                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length, setLinePageSize)} columns={compactColumns} dataSource={lines} scroll={{ x: 780 }} />
+                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length, setLinePageSize)} columns={compactColumns} dataSource={lines} scroll={{ x: 980 }} />
                 </>
               )
             },
