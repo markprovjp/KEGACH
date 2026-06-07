@@ -2,8 +2,9 @@
 
 import { DeleteOutlined, EditOutlined, PhoneOutlined, PrinterOutlined, WarningOutlined } from "@ant-design/icons";
 import { useDraggable } from "@dnd-kit/core";
-import { Badge, Button, Card, Popconfirm, Space, Tag, Typography } from "antd";
+import { Button, Card, Popconfirm, Space, Tag, Typography } from "antd";
 import { orderStatusLabels } from "@/features/orders/order-status";
+import { formatMoney } from "@/lib/number-format";
 import type { KanbanOrder } from "./kanban-types";
 
 type KanbanOrderCardProps = {
@@ -16,15 +17,16 @@ type KanbanOrderCardProps = {
 
 export function KanbanOrderCard({ order, onEdit, onDelete, onPrintCod, compact }: KanbanOrderCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: order.id });
+  const isCod = isCodOrder(order);
   const style = isDragging ? { opacity: 0.25 } : transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
 
   return (
-    <Card ref={setNodeRef} className={`kanban-card${compact ? " compact-card" : ""}`} size="small" style={style} {...listeners} {...attributes}>
+    <Card ref={setNodeRef} className={`kanban-card ${isCod ? "kanban-card-cod" : "kanban-card-regular"}${compact ? " compact-card" : ""}`} size="small" style={style} {...listeners} {...attributes}>
       <KanbanOrderCardContent order={order} />
-      <div className="card-line" style={{ marginTop: 6 }}>
+      <div className="card-line kanban-card-actions">
         <Tag color="blue">{orderStatusLabels[order.status]}</Tag>
         <Space onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
-          {order.codAmount > 0 ? <Button size="small" icon={<PrinterOutlined />} onClick={() => onPrintCod?.(order)}>COD</Button> : null}
+          {isCod ? <Button size="small" type="primary" ghost icon={<PrinterOutlined />} onClick={() => onPrintCod?.(order)}>In gửi COD</Button> : null}
           <Button size="small" icon={<EditOutlined />} onClick={() => onEdit(order)}>Sửa</Button>
           <Popconfirm title="Xóa đơn này?" okText="Xóa" cancelText="Đóng" onConfirm={() => onDelete(order)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
@@ -37,7 +39,7 @@ export function KanbanOrderCard({ order, onEdit, onDelete, onPrintCod, compact }
 
 export function KanbanOrderCardPreview({ order, compact }: { order: KanbanOrder; compact?: boolean }) {
   return (
-    <Card className={`kanban-card kanban-card-overlay${compact ? " compact-card" : ""}`} size="small">
+    <Card className={`kanban-card ${isCodOrder(order) ? "kanban-card-cod" : "kanban-card-regular"} kanban-card-overlay${compact ? " compact-card" : ""}`} size="small">
       <KanbanOrderCardContent order={order} />
       <Tag color="blue" style={{ marginTop: 6 }}>{orderStatusLabels[order.status]}</Tag>
     </Card>
@@ -45,15 +47,34 @@ export function KanbanOrderCardPreview({ order, compact }: { order: KanbanOrder;
 }
 
 function KanbanOrderCardContent({ order }: { order: KanbanOrder }) {
+  const isCod = isCodOrder(order);
+  const isDraft = order.status === "draft" || order.isOfficial === false;
+  const codSent = order.workflowChecks?.includes("cod_info_sent_to_post");
   return (
     <>
-      <div className="card-line">
+      <div className="card-line kanban-card-head">
         <Typography.Text strong>{order.kiotInvoiceCode}</Typography.Text>
-        <Badge color={order.codAmount > 0 ? "green" : "blue"} text={order.codAmount > 0 ? "COD" : "Công nợ"} />
+        <Space size={4} wrap>
+          {isDraft ? <Tag color="default">Nháp</Tag> : null}
+          <Tag color={isCod ? "volcano" : "geekblue"}>{isCod ? "COD" : "Đơn thường"}</Tag>
+        </Space>
       </div>
       <Typography.Text>{order.customer}</Typography.Text>
       <div className="muted"><PhoneOutlined /> {order.phone}</div>
       <div className="kanban-product-summary">{order.productSummary}</div>
+      {isCod ? (
+        <div className="kanban-cod-panel">
+          <div><span>Thu COD</span><b>{formatMoney(order.codAmount)}</b></div>
+          <div><span>SL/KL</span><b>{order.packageCount ?? 0} kiện - {formatNumber(order.estimatedWeightKg ?? 0)} kg</b></div>
+          <div><span>Cước</span><b>{order.freightPayer === "company" ? "Cơ sở trả" : "Khách trả"}</b></div>
+          <Tag color={codSent ? "green" : "red"}>{codSent ? "Đã in/gửi COD" : "Chưa in/gửi COD"}</Tag>
+        </div>
+      ) : (
+        <div className="kanban-regular-panel">
+          <span>Thanh toán</span>
+          <b>{order.paymentStatus === "paid" ? "Đã thanh toán" : "Công nợ/chưa trả"}</b>
+        </div>
+      )}
       <div className="card-line">
         <span>{order.province}</span>
         <b>{order.total.toLocaleString("vi-VN")}đ</b>
@@ -79,4 +100,12 @@ function KanbanOrderCardContent({ order }: { order: KanbanOrder }) {
       )}
     </>
   );
+}
+
+function isCodOrder(order: KanbanOrder): boolean {
+  return order.orderType === "cod" || order.paymentKind === "cod" || order.codAmount > 0;
+}
+
+function formatNumber(value: number): string {
+  return Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 3 });
 }

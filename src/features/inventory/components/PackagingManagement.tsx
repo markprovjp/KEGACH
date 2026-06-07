@@ -35,7 +35,27 @@ type PackagingResponse = {
     expectedBagKg: number;
     varianceKg: number;
   };
+  materialRows: PackagingMaterialRow[];
   batches: PackagingBatchRow[];
+};
+
+type PackagingMaterialRow = {
+  key: string;
+  label: string;
+  packageKg: number;
+  rawProduct: string;
+  bagProduct: string;
+  finishedProduct: string;
+  rawReceivedKg: number;
+  bagReceivedKg: number;
+  rawUsedKg: number;
+  bagUsedKg: number;
+  finishedKg: number;
+  expectedBagKg: number;
+  varianceKg: number;
+  rawRemainingKg: number;
+  bagRemainingKg: number;
+  finishedRemainingKg: number;
 };
 
 type PackagingFormValues = {
@@ -58,6 +78,7 @@ type InventoryRow = {
 
 const emptyResponse: PackagingResponse = {
   reconciliation: { rawUsedKg: 0, bagUsedKg: 0, finishedKg: 0, expectedBagKg: 0, varianceKg: 0 },
+  materialRows: [],
   batches: []
 };
 
@@ -137,6 +158,25 @@ export function PackagingManagement() {
       render: (value) => <Tag color={Math.abs(Number(value)) > 0.001 ? "red" : "green"}>{Number(value).toLocaleString("vi-VN")} kg</Tag>
     },
     { title: "Ghi chú", dataIndex: "note" }
+  ];
+  const materialColumns: ColumnsType<PackagingMaterialRow> = [
+    { title: "Loại", dataIndex: "label", fixed: "left", width: 170 },
+    { title: "Hàng rời", dataIndex: "rawProduct", width: 210 },
+    { title: "Túi bóng", dataIndex: "bagProduct", width: 210 },
+    { title: "Nhập hàng rời", dataIndex: "rawReceivedKg", align: "right", width: 130, render: formatKg },
+    { title: "Nhập túi bóng", dataIndex: "bagReceivedKg", align: "right", width: 130, render: formatKg },
+    { title: "Rời đã dùng", dataIndex: "rawUsedKg", align: "right", width: 120, render: formatKg },
+    { title: "Túi đã dùng", dataIndex: "bagUsedKg", align: "right", width: 120, render: formatKg },
+    { title: "Đã đóng", dataIndex: "finishedKg", align: "right", width: 120, render: formatKg },
+    { title: "Rời còn", dataIndex: "rawRemainingKg", align: "right", width: 110, render: formatKg },
+    { title: "Túi còn", dataIndex: "bagRemainingKg", align: "right", width: 110, render: formatKg },
+    {
+      title: "Lệch túi",
+      dataIndex: "varianceKg",
+      align: "right",
+      width: 120,
+      render: (value) => <Tag color={Math.abs(Number(value)) > 0.001 ? "red" : "green"}>{formatKg(Number(value))}</Tag>
+    }
   ];
 
   useEffect(() => {
@@ -262,6 +302,23 @@ export function PackagingManagement() {
           <Button onClick={loadAll}>Tải lại</Button>
         </Space>
       </Form>
+      <div className="packaging-audit-block">
+        <TableOperationsBar
+          total={data.materialRows.length}
+          pageSize="all"
+          onPageSizeChange={() => undefined}
+          actions={<Button icon={<ReloadOutlined />} onClick={loadAll}>Tải lại</Button>}
+        />
+        <Table
+          rowKey="key"
+          size="small"
+          loading={loading}
+          columns={materialColumns}
+          dataSource={data.materialRows}
+          pagination={false}
+          scroll={{ x: 1550 }}
+        />
+      </div>
       <TableOperationsBar
         total={filteredBatches.length}
         pageSize={pageSize}

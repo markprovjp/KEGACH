@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calculatePackagingReconciliation } from "@/features/inventory/inventory-ledger";
-import { getPackagingRuleByFinishedSku, isPackagingTripletAllowed } from "@/features/inventory/packaging-rules";
+import { getPackagingRuleByFinishedSku, isPackagingTripletAllowed, packagingRules } from "@/features/inventory/packaging-rules";
 
 export async function GET() {
   const batches = await prisma.packagingBatch.findMany({
@@ -18,9 +18,41 @@ export async function GET() {
     bagKg: batch.bagKg,
     finishedKg: batch.finishedKg
   })));
+  const relatedSkus = Array.from(new Set(packagingRules.flatMap((rule) => [rule.finishedSku, rule.rawSku, rule.bagSku])));
+  const relatedProducts = await prisma.product.findMany({
+    where: { sku: { in: relatedSkus } },
+    include: { inventoryMovement: true }
+  });
+  const productBySku = new Map(relatedProducts.map((product) => [product.sku, product]));
+  const batchesByFinishedId = groupBatchesByFinishedProductId(batches);
 
   return NextResponse.json({
     reconciliation,
+    materialRows: packagingRules.map((rule) => {
+      const rawProduct = productBySku.get(rule.rawSku);
+      const bagProduct = productBySku.get(rule.bagSku);
+      const finishedProduct = productBySku.get(rule.finishedSku);
+      const productBatches = finishedProduct ? batchesByFinishedId.get(finishedProduct.id) ?? [] : [];
+      const itemReconciliation = calculatePackagingReconciliation(productBatches.map((batch) => ({
+        rawKg: batch.rawKg,
+        bagKg: batch.bagKg,
+        finishedKg: batch.finishedKg
+      })));
+      return {
+        key: rule.finishedSku,
+        label: rule.label,
+        packageKg: rule.packageKg,
+        rawProduct: rawProduct?.name ?? rule.rawSku,
+        bagProduct: bagProduct?.name ?? rule.bagSku,
+        finishedProduct: finishedProduct?.name ?? rule.finishedSku,
+        rawReceivedKg: rawProduct ? calculateReceivedKg(rawProduct.inventoryMovement) : 0,
+        bagReceivedKg: bagProduct ? calculateReceivedKg(bagProduct.inventoryMovement) : 0,
+        rawRemainingKg: rawProduct ? calculateOnHand(rawProduct.inventoryMovement) : 0,
+        bagRemainingKg: bagProduct ? calculateOnHand(bagProduct.inventoryMovement) : 0,
+        finishedRemainingKg: finishedProduct ? calculateOnHand(finishedProduct.inventoryMovement) : 0,
+        ...itemReconciliation
+      };
+    }),
     batches: batches.map((batch) => ({
       id: batch.id,
       code: batch.code,
@@ -38,6 +70,35 @@ export async function GET() {
       createdAt: batch.createdAt.toISOString()
     }))
   });
+}
+
+function groupBatchesByFinishedProductId(batches: Awaited<ReturnType<typeof prisma.packagingBatch.findMany>>) {
+  return batches.reduce((map, batch) => {
+    const rows = map.get(batch.finishedProductId) ?? [];
+    rows.push(batch);
+    map.set(batch.finishedProductId, rows);
+    return map;
+  }, new Map<string, typeof batches>());
+}
+
+function calculateReceivedKg(movements: Array<{ type: string; quantity: number }>): number {
+  return roundKg(movements.reduce((total, movement) => {
+    if (movement.type === "purchase_in" || movement.type === "return_in") return total + movement.quantity;
+    if (movement.type === "manual_adjustment" && movement.quantity > 0) return total + movement.quantity;
+    return total;
+  }, 0));
+}
+
+function calculateOnHand(movements: Array<{ type: string; quantity: number }>): number {
+  return roundKg(movements.reduce((stock, movement) => {
+    if (["purchase_in", "return_in", "manual_adjustment", "package_produce"].includes(movement.type)) return stock + movement.quantity;
+    if (["ship", "damage_out", "package_consume"].includes(movement.type)) return stock - movement.quantity;
+    return stock;
+  }, 0));
+}
+
+function roundKg(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 export async function POST(request: Request) {

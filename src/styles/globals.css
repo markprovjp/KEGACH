@@ -631,6 +631,79 @@ html[data-theme="dark"] .app-header {
   margin-bottom: 10px;
   border-radius: 8px;
   background: #fff;
+  border-left: 4px solid #d0d5dd;
+  cursor: grab;
+  touch-action: none;
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+}
+
+.kanban-card-cod {
+  border-left-color: #fa541c;
+  background: linear-gradient(90deg, rgba(255, 247, 230, 0.92), #fff 42%);
+}
+
+.kanban-card-regular {
+  border-left-color: #1677ff;
+}
+
+.kanban-card-head {
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.kanban-card-head .ant-typography {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kanban-card-actions {
+  margin-top: 8px;
+  gap: 8px;
+  align-items: center;
+}
+
+.kanban-cod-panel,
+.kanban-regular-panel {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #ffd8bf;
+  border-radius: 8px;
+  background: #fff7e6;
+  padding: 8px;
+  margin: 8px 0;
+}
+
+.kanban-cod-panel div,
+.kanban-regular-panel {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.kanban-cod-panel span,
+.kanban-regular-panel span {
+  color: #667085;
+  font-size: 12px;
+}
+
+.kanban-cod-panel b,
+.kanban-regular-panel b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kanban-cod-panel .ant-tag {
+  width: fit-content;
+  margin-inline-end: 0;
+}
+
+.kanban-regular-panel {
+  border-color: #d6e4ff;
+  background: #f0f5ff;
 }
 
 .kanban-card-overlay {
@@ -833,6 +906,25 @@ html[data-theme="dark"] .order-action-bar {
 html[data-theme="dark"] .kanban-next-action {
   border-color: #7c5b12;
   background: #2f260f;
+}
+
+html[data-theme="dark"] .kanban-card-cod {
+  background: linear-gradient(90deg, rgba(67, 35, 18, 0.9), #111827 46%);
+}
+
+html[data-theme="dark"] .kanban-cod-panel {
+  border-color: #7c3a18;
+  background: #2b1d14;
+}
+
+html[data-theme="dark"] .kanban-regular-panel {
+  border-color: #244c83;
+  background: #142238;
+}
+
+html[data-theme="dark"] .kanban-cod-panel span,
+html[data-theme="dark"] .kanban-regular-panel span {
+  color: #94a3b8;
 }
 
 html[data-theme="dark"] .kanban-next-action.blocked {

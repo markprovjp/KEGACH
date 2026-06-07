@@ -148,7 +148,7 @@ export function KanbanBoard() {
     message.success("Đã xóa đơn hàng");
   }
 
-  function printCod(order: KanbanOrder) {
+  async function printCod(order: KanbanOrder) {
     try {
       printCodHandoff({
         code: order.code,
@@ -168,6 +168,11 @@ export function KanbanBoard() {
         note: order.note,
         productSummary: order.productSummary
       });
+      const workflowChecks = Array.from(new Set([...(order.workflowChecks ?? []), "cod_info_sent_to_post"]));
+      if (order.codAmount > 0 && !order.workflowChecks?.includes("cod_info_sent_to_post")) {
+        await saveOrder({ ...order, workflowChecks }, false);
+        message.success("Đã in phiếu COD và đánh dấu đã gửi thông tin COD");
+      }
     } catch (error) {
       message.error(error instanceof Error ? error.message : "Không mở được cửa sổ in COD");
     }
