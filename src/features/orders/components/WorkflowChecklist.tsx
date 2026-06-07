@@ -59,7 +59,7 @@ export function WorkflowChecklist({ order, value, onChange }: { order: WorkflowO
             <div key={phase} className="workflow-phase-box">
               <b>{workflowPhaseLabels[phase]}</b>
               {phaseKeys.map((key) => (
-                <Checkbox key={key} checked={checked.includes(key)} onChange={(event) => toggleCheck(key, event.target.checked)}>
+                <Checkbox key={key} className="workflow-checkbox" checked={checked.includes(key)} onChange={(event) => toggleCheck(key, event.target.checked)}>
                   {workflowCheckLabels[key]}
                 </Checkbox>
               ))}

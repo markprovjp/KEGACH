@@ -301,6 +301,27 @@ a {
   margin-inline-start: 0;
 }
 
+.workflow-phase-box .workflow-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  line-height: 1.35;
+}
+
+.workflow-phase-box .workflow-checkbox .ant-checkbox {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.workflow-phase-box .workflow-checkbox > span:last-child {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .section-toolbar {
   display: flex;
   align-items: center;
