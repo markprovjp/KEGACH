@@ -14,7 +14,7 @@ export default function InventoryPage() {
         <Tabs
           items={[
             { key: "stock", label: "Tồn kho", children: <InventoryTable /> },
-            { key: "packaging", label: "Đóng gói nêm", children: <PackagingManagement /> },
+            { key: "packaging", label: "Đóng gói ke/nêm", children: <PackagingManagement /> },
             { key: "products", label: "Sản phẩm", children: <ProductManagement /> }
           ]}
         />

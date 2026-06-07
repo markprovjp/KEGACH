@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calculatePackagingReconciliation } from "@/features/inventory/inventory-ledger";
+import { isPackagingTripletAllowed } from "@/features/inventory/packaging-rules";
 
 export async function GET() {
   const batches = await prisma.packagingBatch.findMany({
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
   const bagKg = Number(body.bagKg ?? 0);
   const finishedKg = Number(body.finishedKg ?? 0);
   if (!body.rawProductId || !body.bagProductId || !body.finishedProductId) {
-    return NextResponse.json({ error: "Thiếu sản phẩm nêm rời, túi bóng hoặc thành phẩm" }, { status: 422 });
+    return NextResponse.json({ error: "Thiếu sản phẩm hàng rời, túi bóng hoặc thành phẩm" }, { status: 422 });
   }
   if (rawKg <= 0 || bagKg <= 0 || finishedKg <= 0) {
     return NextResponse.json({ error: "Khối lượng nêm rời, túi bóng và thành phẩm phải lớn hơn 0" }, { status: 422 });
@@ -53,9 +54,22 @@ export async function POST(request: Request) {
   if (finishedKg < rawKg) {
     return NextResponse.json({ error: "Thành phẩm không được nhỏ hơn lượng nêm rời đã dùng" }, { status: 422 });
   }
+  const selectedProducts = await prisma.product.findMany({
+    where: { id: { in: [body.rawProductId, body.bagProductId, body.finishedProductId] } },
+    select: { id: true, sku: true }
+  });
+  const selectedById = new Map(selectedProducts.map((product) => [product.id, product]));
+  if (!isPackagingTripletAllowed({
+    finishedSku: selectedById.get(body.finishedProductId)?.sku,
+    rawSku: selectedById.get(body.rawProductId)?.sku,
+    bagSku: selectedById.get(body.bagProductId)?.sku
+  })) {
+    return NextResponse.json({ error: "Hàng rời và túi bóng phải đúng loại thành phẩm ke/nêm được phép đóng gói" }, { status: 422 });
+  }
+
   const [rawOnHand, bagOnHand] = await Promise.all([getOnHand(body.rawProductId), getOnHand(body.bagProductId)]);
   if (rawOnHand < rawKg) {
-    return NextResponse.json({ error: `Nêm rời không đủ tồn. Hiện còn ${rawOnHand} kg` }, { status: 422 });
+    return NextResponse.json({ error: `Hàng rời không đủ tồn. Hiện còn ${rawOnHand} kg` }, { status: 422 });
   }
   if (bagOnHand < bagKg) {
     return NextResponse.json({ error: `Túi bóng không đủ tồn. Hiện còn ${bagOnHand} kg` }, { status: 422 });
@@ -75,7 +89,7 @@ export async function POST(request: Request) {
       note: body.note || null,
       movements: {
         create: [
-          { productId: body.rawProductId, type: "package_consume", quantity: rawKg, note: `Đóng gói ${code}: xuất nêm rời` },
+          { productId: body.rawProductId, type: "package_consume", quantity: rawKg, note: `Đóng gói ${code}: xuất hàng rời` },
           { productId: body.bagProductId, type: "package_consume", quantity: bagKg, note: `Đóng gói ${code}: xuất túi bóng` },
           { productId: body.finishedProductId, type: "package_produce", quantity: finishedKg, note: `Đóng gói ${code}: nhập thành phẩm` }
         ]

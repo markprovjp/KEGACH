@@ -3,13 +3,17 @@ import { carrierSeeds, productVariantSeeds, sampleProducts } from "./sample-data
 
 describe("business sample data", () => {
   it("contains the full approved product list with Vietnamese names", () => {
-    expect(sampleProducts).toHaveLength(28);
+    expect(sampleProducts).toHaveLength(36);
     expect(sampleProducts.map((product) => product.name)).toContain("Ke cân bằng 1MM");
     expect(sampleProducts.map((product) => product.name)).toContain("Nêm");
     expect(sampleProducts.map((product) => product.name)).toContain("Nêm rời");
     expect(sampleProducts.map((product) => product.name)).toContain("Túi bóng đóng nêm");
+    expect(sampleProducts.map((product) => product.name)).toContain("Ke cân bằng 2MM rời");
+    expect(sampleProducts.map((product) => product.name)).toContain("Túi bóng Ke cân bằng 2MM");
     expect(sampleProducts.map((product) => product.name)).toContain("Mủ chiết mạch");
     expect(sampleProducts.map((product) => product.name)).toContain("Súng điện full bộ");
+    expect(sampleProducts.filter((product) => product.name.includes(" rời") && ["kg"].includes(product.unit))).toHaveLength(5);
+    expect(sampleProducts.filter((product) => product.name.startsWith("Túi bóng"))).toHaveLength(5);
     expect(sampleProducts.find((product) => product.id === "ke-vit-xoay-1-5mm")?.packageRule).toBe("60 túi / thùng - 1 túi 50 cái");
   });
 

@@ -29,7 +29,15 @@ export const sampleProducts: CatalogProduct[] = [
   { id: "ban-keo-rang-cua", name: "Bàn kéo răng cưa", unit: "cái", defaultPrice: 90000, packageRule: undefined, aliases: [{ value: "bàn kéo" }] },
   { id: "bay-rang-cua", name: "Bay răng cưa", unit: "cái", defaultPrice: 45000, packageRule: undefined, aliases: [{ value: "bay" }] },
   { id: "mu-chiet-mach", name: "Mủ chiết mạch", unit: "cái", defaultPrice: 12000, packageRule: undefined, weightPerUnitKg: 1, aliases: [{ value: "mủ chiết mạch" }] },
-  { id: "sung-dien-full-bo", name: "Súng điện full bộ", unit: "bộ", defaultPrice: 1300000, packageRule: "1 bộ", weightPerUnitKg: 5, aliases: [{ value: "súng điện" }, { value: "sung dien" }, { value: "súng điện full bộ" }] }
+  { id: "sung-dien-full-bo", name: "Súng điện full bộ", unit: "bộ", defaultPrice: 1300000, packageRule: "1 bộ", weightPerUnitKg: 5, aliases: [{ value: "súng điện" }, { value: "sung dien" }, { value: "súng điện full bộ" }] },
+  { id: "ke-can-bang-1mm-roi", name: "Ke cân bằng 1MM rời", unit: "kg", defaultPrice: 0, packageRule: "Nguyên liệu rời để đóng bao", weightPerUnitKg: 1, aliases: [{ value: "ke 1mm rời" }, { value: "ke 1 ly roi" }] },
+  { id: "tui-bong-ke-can-bang-1mm", name: "Túi bóng Ke cân bằng 1MM", unit: "kg", defaultPrice: 0, packageRule: "Túi bóng xuất dùng theo kg", weightPerUnitKg: 1, aliases: [{ value: "túi bóng ke 1mm" }, { value: "tui bong ke 1 ly" }] },
+  { id: "ke-can-bang-1-5mm-roi", name: "Ke cân bằng 1.5MM rời", unit: "kg", defaultPrice: 0, packageRule: "Nguyên liệu rời để đóng bao", weightPerUnitKg: 1, aliases: [{ value: "ke 1.5mm rời" }, { value: "ke 1.5 ly roi" }] },
+  { id: "tui-bong-ke-can-bang-1-5mm", name: "Túi bóng Ke cân bằng 1.5MM", unit: "kg", defaultPrice: 0, packageRule: "Túi bóng xuất dùng theo kg", weightPerUnitKg: 1, aliases: [{ value: "túi bóng ke 1.5mm" }, { value: "tui bong ke 1.5 ly" }] },
+  { id: "ke-can-bang-2mm-roi", name: "Ke cân bằng 2MM rời", unit: "kg", defaultPrice: 0, packageRule: "Nguyên liệu rời để đóng bao", weightPerUnitKg: 1, aliases: [{ value: "ke 2mm rời" }, { value: "ke 2 ly roi" }] },
+  { id: "tui-bong-ke-can-bang-2mm", name: "Túi bóng Ke cân bằng 2MM", unit: "kg", defaultPrice: 0, packageRule: "Túi bóng xuất dùng theo kg", weightPerUnitKg: 1, aliases: [{ value: "túi bóng ke 2mm" }, { value: "tui bong ke 2 ly" }] },
+  { id: "ke-can-bang-3mm-roi", name: "Ke cân bằng 3MM rời", unit: "kg", defaultPrice: 0, packageRule: "Nguyên liệu rời để đóng bao", weightPerUnitKg: 1, aliases: [{ value: "ke 3mm rời" }, { value: "ke 3 ly roi" }] },
+  { id: "tui-bong-ke-can-bang-3mm", name: "Túi bóng Ke cân bằng 3MM", unit: "kg", defaultPrice: 0, packageRule: "Túi bóng xuất dùng theo kg", weightPerUnitKg: 1, aliases: [{ value: "túi bóng ke 3mm" }, { value: "tui bong ke 3 ly" }] }
 ];
 
 export type ProductVariantSeed = {
@@ -120,9 +128,9 @@ export const inventorySeeds: InventoryRowSeed[] = sampleProducts.map((product, i
   productId: product.id,
   product: product.name,
   unit: product.unit,
-  onHand: [120, 84, 96, 64, 24, 0, 0, 16, 52, 44, 38, 33, 28, 18, 22, 36, 30, 27, 11, 14, 12, 40, 33, 20, 9, 15, 10, 2][index] ?? 20,
-  reserved: [18, 8, 12, 9, 12, 0, 0, 3, 5, 4, 2, 6, 8, 2, 1, 6, 4, 3, 1, 0, 0, 3, 4, 2, 1, 0, 0, 0][index] ?? 0,
-  lowStockThreshold: [40, 40, 40, 40, 20, 50, 10, 8, 25, 25, 25, 25, 25, 12, 12, 18, 10, 10, 5, 5, 5, 8, 8, 8, 5, 5, 5, 1][index] ?? 5,
+  onHand: [120, 84, 96, 64, 24, 0, 0, 16, 52, 44, 38, 33, 28, 18, 22, 36, 30, 27, 11, 14, 12, 40, 33, 20, 9, 15, 10, 2, 0, 0, 0, 0, 0, 0, 0, 0][index] ?? 20,
+  reserved: [18, 8, 12, 9, 12, 0, 0, 3, 5, 4, 2, 6, 8, 2, 1, 6, 4, 3, 1, 0, 0, 3, 4, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0][index] ?? 0,
+  lowStockThreshold: [40, 40, 40, 40, 20, 50, 10, 8, 25, 25, 25, 25, 25, 12, 12, 18, 10, 10, 5, 5, 5, 8, 8, 8, 5, 5, 5, 1, 50, 10, 50, 10, 50, 10, 50, 10][index] ?? 5,
   lastMovement: index % 3 === 0 ? "giữ hàng HD004066" : index % 3 === 1 ? "nhập mua" : "xuất giao HD004082"
 }));
 
