@@ -6,7 +6,7 @@ describe("order workflow", () => {
     const result = canMoveToStatus({ orderType: "cod", status: "packed", customerName: "Anh A", customerPhone: "", codAmount: 0 }, "shipped");
 
     expect(result.ok).toBe(false);
-    expect(result.missing).toContain("COD thiếu SĐT");
+    expect(result.missing).toContain("COD thiếu SĐT người nhận");
     expect(result.missing).toContain("COD thiếu tiền thu");
   });
 

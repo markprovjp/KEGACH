@@ -134,6 +134,20 @@ a {
   margin-top: 12px;
 }
 
+.parse-line-match {
+  border: 1px solid #d9ead7;
+  background: #f6ffed;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.line-conversion-note {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
 .manual-invoice {
   border: 1px solid #e4e7ec;
   border-radius: 8px;

@@ -1,6 +1,6 @@
 "use client";
 
-import { DeleteOutlined, FileTextOutlined, PlusOutlined, PrinterOutlined, SaveOutlined } from "@ant-design/icons";
+import { DeleteOutlined, FileTextOutlined, MessageOutlined, PlusOutlined, PrinterOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
@@ -8,9 +8,11 @@ import { PageSizeControl, tablePagination, type PageSizeValue } from "@/componen
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { ProductSearch } from "@/features/catalog/components/ProductSearch";
 import { CustomerSearch } from "@/features/customers/components/CustomerSearch";
+import { parseFreeformOrderText } from "@/features/orders/freeform-order-parser";
 import { estimateOrderWeightKg, parseKiotInvoiceText } from "@/features/orders/kiot-invoice-parser";
 import { orderTypeLabels, paymentStatusLabels, type OrderType, type PaymentStatus } from "@/features/orders/order-workflow";
 import { WorkflowChecklist } from "@/features/orders/components/WorkflowChecklist";
+import { formatMoney, formatMoneyInput, formatQuantityInput, parseMoneyInput, parseQuantityInput } from "@/lib/number-format";
 
 type Line = {
   key: string;
@@ -18,6 +20,9 @@ type Line = {
   productName?: string;
   quantity: number;
   unitPrice: number;
+  enteredQuantity?: number;
+  enteredUnit?: string;
+  conversionNote?: string;
 };
 
 type InventoryRow = {
@@ -35,6 +40,9 @@ type OrderFormValues = {
   customerPhone?: string;
   customerAddress?: string;
   customerId?: string;
+  receiverName?: string;
+  receiverPhone?: string;
+  receiverAddress?: string;
   codAmount?: number;
   paymentKind?: "cod" | "debt";
   paymentStatus?: PaymentStatus;
@@ -64,7 +72,7 @@ type CustomerOption = {
   note?: string | null;
 };
 
-type EntryMode = "invoice" | "ocr";
+type EntryMode = "invoice" | "message" | "ocr";
 type OrderMode = "draft" | "official";
 type QuickProductFormValues = {
   name: string;
@@ -104,6 +112,10 @@ Khách hàng thanh toán:
 Còn lại:
 6,000,000`;
 
+const defaultMessageText = `B07 ship e 1 thùng
+2 thùng keo 2 thành phần màu 08
+20kg ke nêm 1.5mm`;
+
 export function OrderEntryForm() {
   const [form] = Form.useForm<OrderFormValues>();
   const [quickProductForm] = Form.useForm<QuickProductFormValues>();
@@ -112,12 +124,14 @@ export function OrderEntryForm() {
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [rawText, setRawText] = useState(defaultInvoiceText);
+  const [messageText, setMessageText] = useState(defaultMessageText);
   const [entryMode, setEntryMode] = useState<EntryMode>("invoice");
   const [orderMode, setOrderMode] = useState<OrderMode>("draft");
   const [quickProductLineKey, setQuickProductLineKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [linePageSize, setLinePageSize] = useState<PageSizeValue>(10);
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
+  const parsedMessage = useMemo(() => parseFreeformOrderText(messageText, products), [messageText, products]);
   const watchedValues = Form.useWatch([], form) ?? {};
   const isOfficial = orderMode === "official";
   const stockByProductId = useMemo(() => new Map(inventory.map((row) => [row.productId, row])), [inventory]);
@@ -168,14 +182,19 @@ export function OrderEntryForm() {
       dataIndex: "quantity",
       width: 130,
       align: "right",
-      render: (_, record) => <InputNumber min={1} value={record.quantity} formatter={formatNumberInput} parser={parseNumberInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} style={{ width: "100%" }} />
+      render: (_, record) => (
+        <div>
+          <InputNumber min={0.001} step={0.5} value={record.quantity} formatter={formatQuantityInput} parser={parseQuantityInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1), conversionNote: undefined })} style={{ width: "100%" }} />
+          {record.conversionNote ? <Typography.Text type="secondary" className="line-conversion-note">{record.conversionNote}</Typography.Text> : null}
+        </div>
+      )
     },
     {
       title: "Đơn giá",
       dataIndex: "unitPrice",
       width: 150,
       align: "right",
-      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} style={{ width: "100%" }} />
+      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} formatter={formatMoneyInput} parser={parseMoneyInput} suffix="đ" onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} style={{ width: "100%" }} />
     },
     {
       title: "Thành tiền",
@@ -211,7 +230,12 @@ export function OrderEntryForm() {
       title: "SL",
       dataIndex: "quantity",
       width: 120,
-      render: (_, record) => <InputNumber min={1} value={record.quantity} formatter={formatNumberInput} parser={parseNumberInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} />
+      render: (_, record) => (
+        <div>
+          <InputNumber min={0.001} step={0.5} value={record.quantity} formatter={formatQuantityInput} parser={parseQuantityInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1), conversionNote: undefined })} />
+          {record.conversionNote ? <Typography.Text type="secondary" className="line-conversion-note">{record.conversionNote}</Typography.Text> : null}
+        </div>
+      )
     },
     {
       title: "Tồn khả dụng",
@@ -236,7 +260,7 @@ export function OrderEntryForm() {
       title: "Đơn giá",
       dataIndex: "unitPrice",
       width: 160,
-      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} />
+      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} formatter={formatMoneyInput} parser={parseMoneyInput} suffix="đ" onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} />
     }
   ];
 
@@ -259,7 +283,10 @@ export function OrderEntryForm() {
     updateLine(line.key, {
       productId,
       productName: product?.name,
-      unitPrice: product?.defaultPrice ?? line.unitPrice
+      unitPrice: product?.defaultPrice ?? line.unitPrice,
+      enteredQuantity: undefined,
+      enteredUnit: undefined,
+      conversionNote: undefined
     });
   }
 
@@ -352,6 +379,35 @@ export function OrderEntryForm() {
     message.success("Đã trích xuất hóa đơn Kiot vào đơn vận hành");
   }
 
+  function applyFreeformMessage() {
+    if (!parsedMessage.matched.length) {
+      message.warning("Chưa nhận diện được dòng hàng nào. Hãy thêm sản phẩm mới hoặc kiểm tra alias.");
+      return;
+    }
+    setLines(parsedMessage.matched.map((line) => ({
+      key: crypto.randomUUID(),
+      productId: line.productId,
+      productName: line.productName,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      enteredQuantity: line.enteredQuantity,
+      enteredUnit: line.enteredUnit,
+      conversionNote: line.conversionNote
+    })));
+    const totalWeight = parsedMessage.matched.reduce((sum, line) => {
+      const product = products.find((item) => item.id === line.productId);
+      return sum + line.quantity * (product?.weightPerUnitKg ?? (product?.unit === "kg" ? 1 : 0));
+    }, 0);
+    form.setFieldsValue({
+      orderType: "truck_share",
+      deliveryMode: "truck_share",
+      freightPayer: "customer",
+      packageCount: parsedMessage.matched.length,
+      estimatedWeightKg: Number(totalWeight.toFixed(1))
+    });
+    message.success(`Đã tách ${parsedMessage.matched.length} dòng hàng từ lời khách`);
+  }
+
   function printPackingSlip() {
     if (!lines.length) {
       message.warning("Chưa có dòng hàng để in phiếu soạn");
@@ -406,7 +462,9 @@ export function OrderEntryForm() {
           <div class="meta">
             <div><b>Khách hàng:</b> ${escapeHtml(values.customerName ?? "")}</div>
             <div><b>SĐT:</b> ${escapeHtml(values.customerPhone ?? "")}</div>
-            <div><b>Địa chỉ:</b> ${escapeHtml(values.customerAddress ?? "-")}</div>
+            <div><b>Người nhận:</b> ${escapeHtml(values.receiverName || values.customerName || "")}</div>
+            <div><b>SĐT nhận:</b> ${escapeHtml(values.receiverPhone || values.customerPhone || "")}</div>
+            <div><b>Địa chỉ:</b> ${escapeHtml(values.receiverAddress || values.customerAddress || "-")}</div>
             <div><b>Nhà xe:</b> ${escapeHtml(values.carrierName ?? "-")}</div>
             <div><b>Số kiện:</b> ${values.packageCount ?? ""}</div>
             <div><b>Khối lượng:</b> ${values.estimatedWeightKg ?? ""} kg</div>
@@ -432,7 +490,7 @@ export function OrderEntryForm() {
     const response = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, rawText, lines })
+      body: JSON.stringify({ ...values, rawText: entryMode === "message" ? messageText : rawText, lines })
     });
     setSaving(false);
     if (!response.ok) {
@@ -478,6 +536,7 @@ export function OrderEntryForm() {
                     onChange={(value) => setEntryMode(value as EntryMode)}
                     options={[
                       { value: "invoice", label: "Nhập như hóa đơn" },
+                      { value: "message", label: "Từ lời khách" },
                       { value: "ocr", label: "Paste OCR Kiot" }
                     ]}
                   />
@@ -507,6 +566,32 @@ export function OrderEntryForm() {
                         </div>
                       </div>
                     </div>
+                  ) : entryMode === "message" ? (
+                    <div className="order-intake-grid">
+                      <Form.Item label="Paste lời khách / tin Zalo">
+                        <Input.TextArea value={messageText} onChange={(event) => setMessageText(event.target.value)} rows={14} placeholder="Ví dụ: B07 ship e 1 thùng" />
+                      </Form.Item>
+                      <div className="parse-panel parse-panel-sticky">
+                        <div className="card-line">
+                          <Typography.Text strong>Tách hàng và quy đổi</Typography.Text>
+                          <Button icon={<MessageOutlined />} onClick={applyFreeformMessage}>Đưa vào đơn</Button>
+                        </div>
+                        <div className="parse-lines">
+                          {parsedMessage.matched.map((line) => (
+                            <div key={`${line.rawLine}-${line.productId}`} className="parse-line-match">
+                              <div className="card-line">
+                                <span>{line.productName}</span>
+                                <b>{line.quantity.toLocaleString("vi-VN")} {line.unit}</b>
+                              </div>
+                              <Typography.Text type="secondary">{line.conversionNote ?? `${line.enteredQuantity.toLocaleString("vi-VN")} ${line.enteredUnit}`}</Typography.Text>
+                            </div>
+                          ))}
+                          {parsedMessage.unmatched.map((line) => (
+                            <Alert key={line} type="warning" showIcon title="Chưa nhận diện" description={line} style={{ marginTop: 8 }} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="manual-invoice">
                       <div className="manual-invoice-header">
@@ -526,6 +611,9 @@ export function OrderEntryForm() {
                           <Form.Item label="Khách hàng" name="customerName"><Input /></Form.Item>
                           <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
                           <Form.Item label="Địa chỉ" name="customerAddress"><Input /></Form.Item>
+                          <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Nếu khách trung gian đặt hộ" /></Form.Item>
+                          <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
+                          <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
                           <Form.Item label="Loại đơn" name="orderType">
                             <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
                           </Form.Item>
@@ -536,6 +624,9 @@ export function OrderEntryForm() {
                           <Form.Item label="Khách mới / tên khách" name="customerName"><Input placeholder="Tên khách / đại lý / thợ" /></Form.Item>
                           <Form.Item label="SĐT" name="customerPhone"><Input placeholder="Số điện thoại nếu có" /></Form.Item>
                           <Form.Item label="Địa chỉ / tuyến gửi" name="customerAddress"><Input placeholder="Địa chỉ, tỉnh, nhà xe khách muốn gửi..." /></Form.Item>
+                          <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Nếu người đặt là trung gian" /></Form.Item>
+                          <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
+                          <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
                           <Form.Item label="Ghi chú nháp" name="note"><Input placeholder="Ví dụ: khách chưa chốt, hỏi thêm hàng, thiếu hàng cần nhập..." /></Form.Item>
                         </div>
                       )}
@@ -575,6 +666,9 @@ export function OrderEntryForm() {
                   <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
                   <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
                   <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
+                  <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Nếu khách đặt hộ người khác" /></Form.Item>
+                  <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
+                  <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
                   <Form.Item label="Ngày hẹn gửi" name="promisedSendDate"><DatePicker style={{ width: "100%" }} /></Form.Item>
                 </div>
               )
@@ -599,7 +693,7 @@ export function OrderEntryForm() {
                 <div className="form-grid compact-form-grid">
                   <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
                   <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
-                  <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" style={{ width: "100%" }} /></Form.Item>
+                  <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} formatter={formatMoneyInput} parser={parseMoneyInput} suffix="đ" style={{ width: "100%" }} /></Form.Item>
                   <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Gửi xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
                   <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
                   <Form.Item label="Nhà xe / đơn vị giao" name="carrierName"><Select showSearch allowClear optionFilterProp="label" options={carriers.map((carrier) => ({ value: carrier.name, label: `${carrier.name} - ${carrier.route}` }))} /></Form.Item>
@@ -624,6 +718,9 @@ export function OrderEntryForm() {
                         customerName: watchedValues.customerName,
                         customerPhone: watchedValues.customerPhone,
                         customerAddress: watchedValues.customerAddress,
+                        receiverName: watchedValues.receiverName,
+                        receiverPhone: watchedValues.receiverPhone,
+                        receiverAddress: watchedValues.receiverAddress,
                         codAmount: watchedValues.codAmount,
                         paymentStatus: watchedValues.paymentStatus,
                         deliveryMode: watchedValues.deliveryMode,
@@ -665,7 +762,7 @@ export function OrderEntryForm() {
             <Select options={[{ value: "kg", label: "kg" }, { value: "tuýp", label: "tuýp" }, { value: "cái", label: "cái" }, { value: "bộ", label: "bộ" }, { value: "thùng", label: "thùng" }, { value: "can", label: "can" }, { value: "túi", label: "túi" }]} />
           </Form.Item>
           <Form.Item label="Giá bán" name="defaultPrice" rules={[{ required: true, message: "Nhập giá bán" }]}>
-            <InputNumber min={0} step={1000} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" style={{ width: "100%" }} />
+            <InputNumber min={0} step={1000} formatter={formatMoneyInput} parser={parseMoneyInput} suffix="đ" style={{ width: "100%" }} />
           </Form.Item>
         </div>
         <Form.Item label="Quy cách / ghi chú" name="packageRule">
@@ -675,19 +772,6 @@ export function OrderEntryForm() {
     </Modal>
     </>
   );
-}
-
-function formatMoney(value: number): string {
-  return `${Math.round(Number(value || 0)).toLocaleString("vi-VN")}đ`;
-}
-
-function formatNumberInput(value?: string | number): string {
-  if (value === undefined || value === null || value === "") return "";
-  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
-
-function parseNumberInput(value?: string): number {
-  return Number(String(value ?? "").replace(/[^\d.-]/g, "").replace(/\./g, "")) || 0;
 }
 
 function escapeHtml(value: string): string {

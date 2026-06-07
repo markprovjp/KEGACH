@@ -86,6 +86,9 @@ export type WorkflowOrderInput = {
   customerName?: string | null;
   customerPhone?: string | null;
   customerAddress?: string | null;
+  receiverName?: string | null;
+  receiverPhone?: string | null;
+  receiverAddress?: string | null;
   codAmount?: number | null;
   paymentStatus?: string | null;
   carrierName?: string | null;
@@ -152,9 +155,12 @@ export function getWorkflowDataMissing(order: WorkflowOrderInput): string[] {
 
   if (type === "online" && !order.kiotInvoiceCode && order.isOfficial) missing.unshift("Đơn online phải có hóa đơn Kiot");
   if (type === "cod" && (order.isOfficial || order.status !== "draft")) {
-    if (!order.customerName?.trim()) missing.unshift("COD thiếu tên khách");
-    if (!order.customerPhone?.trim() || order.customerPhone === "-") missing.unshift("COD thiếu SĐT");
-    if (!order.customerAddress?.trim()) missing.unshift("COD thiếu địa chỉ");
+    const nameForLabel = order.receiverName || order.customerName;
+    const phoneForLabel = order.receiverPhone || order.customerPhone;
+    const addressForLabel = order.receiverAddress || order.customerAddress;
+    if (!nameForLabel?.trim()) missing.unshift("COD thiếu tên người nhận");
+    if (!phoneForLabel?.trim() || phoneForLabel === "-") missing.unshift("COD thiếu SĐT người nhận");
+    if (!addressForLabel?.trim()) missing.unshift("COD thiếu địa chỉ người nhận");
     if (!order.codAmount || order.codAmount <= 0) missing.unshift("COD thiếu tiền thu");
     if (!order.packageCount || order.packageCount <= 0) missing.unshift("COD thiếu số kiện");
     if (!order.estimatedWeightKg || order.estimatedWeightKg <= 0) missing.unshift("COD thiếu khối lượng");

@@ -10,5 +10,6 @@ prisma/dev.db-journal
 *.tsbuildinfo
 tool_events.jsonl
 .next-dev*.log
+dev-server*.log
 khachhang.json
 sanpham.json

@@ -26,7 +26,10 @@ export async function GET() {
       customer: order.customerName,
       phone: order.customerPhone ?? "-",
       customerAddress: order.customerAddress ?? undefined,
-      productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity} ${item.product.unit}`).join(", ") || "Chưa có hàng",
+      receiverName: order.receiverName ?? undefined,
+      receiverPhone: order.receiverPhone ?? undefined,
+      receiverAddress: order.receiverAddress ?? undefined,
+      productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity.toLocaleString("vi-VN")} ${item.product.unit}${item.conversionNote ? ` (${item.conversionNote})` : ""}`).join(", ") || "Chưa có hàng",
       total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
       codAmount: order.codAmount,
       province: order.province ?? "-",
@@ -54,6 +57,9 @@ export async function GET() {
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         customerAddress: order.customerAddress,
+        receiverName: order.receiverName,
+        receiverPhone: order.receiverPhone,
+        receiverAddress: order.receiverAddress,
         codAmount: order.codAmount,
         paymentStatus: order.paymentStatus,
         carrierName: order.shipments[0]?.carrierName,
@@ -74,10 +80,13 @@ export async function POST(request: Request) {
   const customer = await resolveCustomer(body);
   const isOfficial = Boolean(body.isOfficial);
   const workflowChecks = normalizeWorkflowChecks(body.workflowChecks);
-  const lines = (body.lines ?? []).filter((line: { productId?: string }) => line.productId).map((line: { productId: string; quantity: number; unitPrice: number }) => ({
+  const lines = (body.lines ?? []).filter((line: { productId?: string }) => line.productId).map((line: { productId: string; quantity: number; unitPrice: number; enteredQuantity?: number; enteredUnit?: string; conversionNote?: string }) => ({
     productId: line.productId,
     quantity: Number(line.quantity),
-    unitPrice: Number(line.unitPrice)
+    unitPrice: Number(line.unitPrice),
+    enteredQuantity: line.enteredQuantity == null ? null : Number(line.enteredQuantity),
+    enteredUnit: line.enteredUnit || null,
+    conversionNote: line.conversionNote || null
   }));
   const shortages = await getShortagesForLines(lines);
   const shipmentInput = {
@@ -96,6 +105,9 @@ export async function POST(request: Request) {
     customerName: body.customerName,
     customerPhone: body.customerPhone,
     customerAddress: body.customerAddress,
+    receiverName: body.receiverName,
+    receiverPhone: body.receiverPhone,
+    receiverAddress: body.receiverAddress,
     codAmount: Number(body.codAmount ?? 0),
     paymentStatus: body.paymentStatus,
     ...shipmentInput,
@@ -104,14 +116,14 @@ export async function POST(request: Request) {
   if (isOfficial && hardMissing.length > 0) {
     return NextResponse.json({ error: "Đơn chính thức thiếu thông tin bắt buộc", missing: hardMissing }, { status: 422 });
   }
-  const count = await prisma.order.count();
+  const code = await nextOrderCode();
   const status: OrderStatus = shortages.length ? "awaiting_stock" : isOfficial && body.kiotInvoiceCode ? "kiot_linked" : "draft";
   const shortageNote = shortages.length
     ? `Thiếu hàng: ${shortages.map((item) => `${item.productName} thiếu ${item.shortage.toLocaleString("vi-VN")} ${item.unit}`).join("; ")}`
     : "";
   const order = await prisma.order.create({
     data: {
-      code: `KG${String(count + 1).padStart(5, "0")}`,
+      code,
       kiotInvoiceCode: body.kiotInvoiceCode || null,
       sourceChannel: body.sourceChannel || "kiot_print",
       orderType: body.orderType || "online",
@@ -121,6 +133,9 @@ export async function POST(request: Request) {
       customerName: body.customerName || "Khách lẻ",
       customerPhone: body.customerPhone || null,
       customerAddress: body.customerAddress || null,
+      receiverName: body.receiverName || null,
+      receiverPhone: body.receiverPhone || null,
+      receiverAddress: body.receiverAddress || null,
       province: body.province || null,
       codAmount: Number(body.codAmount ?? 0),
       paymentKind: body.paymentKind || "debt",
@@ -162,6 +177,9 @@ type ProductWithMovements = {
 type OrderItemWithStock = {
   productId: string;
   quantity: number;
+  enteredQuantity?: number | null;
+  enteredUnit?: string | null;
+  conversionNote?: string | null;
   product: ProductWithMovements;
 };
 
@@ -233,4 +251,14 @@ async function resolveCustomer(body: { customerId?: string; customerName?: strin
       note: body.note || null
     }
   });
+}
+
+async function nextOrderCode(): Promise<string> {
+  const latest = await prisma.order.findFirst({
+    where: { code: { startsWith: "KG" } },
+    orderBy: { code: "desc" },
+    select: { code: true }
+  });
+  const lastNumber = Number(latest?.code.replace(/^KG/, "") ?? "0");
+  return `KG${String((Number.isFinite(lastNumber) ? lastNumber : 0) + 1).padStart(5, "0")}`;
 }

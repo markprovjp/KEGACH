@@ -27,6 +27,9 @@ export async function PUT(request: Request, context: RouteContext) {
     customerName: body.customerName || body.customer || existing.customerName,
     customerPhone: body.customerPhone || body.phone || null,
     customerAddress: body.customerAddress || null,
+    receiverName: body.receiverName || existing.receiverName,
+    receiverPhone: body.receiverPhone || existing.receiverPhone,
+    receiverAddress: body.receiverAddress || existing.receiverAddress,
     codAmount: Number(body.codAmount ?? 0),
     paymentStatus: body.paymentStatus || existing.paymentStatus,
     carrierName: body.carrierName ? String(body.carrierName) : null,
@@ -54,6 +57,9 @@ export async function PUT(request: Request, context: RouteContext) {
       customerName: body.customerName || body.customer || existing.customerName,
       customerPhone: body.customerPhone || body.phone || null,
       customerAddress: body.customerAddress || null,
+      receiverName: body.receiverName === undefined ? existing.receiverName : body.receiverName || null,
+      receiverPhone: body.receiverPhone === undefined ? existing.receiverPhone : body.receiverPhone || null,
+      receiverAddress: body.receiverAddress === undefined ? existing.receiverAddress : body.receiverAddress || null,
       province: body.province || null,
       codAmount: Number(body.codAmount ?? 0),
       paymentKind: body.paymentKind || existing.paymentKind,
@@ -107,6 +113,9 @@ type OrderWithRelations = {
   customerName: string;
   customerPhone: string | null;
   customerAddress: string | null;
+  receiverName: string | null;
+  receiverPhone: string | null;
+  receiverAddress: string | null;
   codAmount: number;
   province: string | null;
   promisedSendAt: Date | null;
@@ -117,7 +126,7 @@ type OrderWithRelations = {
   status: OrderStatus;
   note: string | null;
   workflowChecks: unknown;
-  items: Array<{ productId: string; quantity: number; unitPrice: number; product: { name: string; unit: string; inventoryMovement: Array<{ type: string; quantity: number }> } }>;
+  items: Array<{ productId: string; quantity: number; unitPrice: number; enteredQuantity?: number | null; enteredUnit?: string | null; conversionNote?: string | null; product: { name: string; unit: string; inventoryMovement: Array<{ type: string; quantity: number }> } }>;
   shipments: Array<{ carrierName: string | null; driverName: string | null; deliveryMode: string; freightPayer: string; packageCount: number; estimatedWeightKg: number }>;
 };
 
@@ -135,7 +144,10 @@ function toOrderRow(order: OrderWithRelations) {
     customer: order.customerName,
     phone: order.customerPhone ?? "-",
     customerAddress: order.customerAddress ?? undefined,
-    productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity} ${item.product.unit}`).join(", ") || "Chưa có hàng",
+    receiverName: order.receiverName ?? undefined,
+    receiverPhone: order.receiverPhone ?? undefined,
+    receiverAddress: order.receiverAddress ?? undefined,
+    productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity.toLocaleString("vi-VN")} ${item.product.unit}${item.conversionNote ? ` (${item.conversionNote})` : ""}`).join(", ") || "Chưa có hàng",
     total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     codAmount: order.codAmount,
     province: order.province ?? "-",
@@ -163,6 +175,9 @@ function toOrderRow(order: OrderWithRelations) {
       customerName: order.customerName,
       customerPhone: order.customerPhone,
       customerAddress: order.customerAddress,
+      receiverName: order.receiverName,
+      receiverPhone: order.receiverPhone,
+      receiverAddress: order.receiverAddress,
       codAmount: order.codAmount,
       paymentStatus: order.paymentStatus,
       carrierName: order.shipments[0]?.carrierName,

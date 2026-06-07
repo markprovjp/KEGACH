@@ -247,6 +247,9 @@ export function KanbanBoard() {
                     <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
                     <Form.Item label="Tỉnh/địa bàn" name="province"><Input /></Form.Item>
                     <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
+                    <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Để trống nếu trùng người đặt" /></Form.Item>
+                    <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
+                    <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
                   </div>
                 )
               },
@@ -281,6 +284,9 @@ export function KanbanBoard() {
                         customerName: watchedEdit.customerName,
                         customerPhone: watchedEdit.customerPhone,
                         customerAddress: watchedEdit.customerAddress,
+                        receiverName: watchedEdit.receiverName,
+                        receiverPhone: watchedEdit.receiverPhone,
+                        receiverAddress: watchedEdit.receiverAddress,
                         codAmount: watchedEdit.codAmount,
                         paymentStatus: watchedEdit.paymentStatus,
                         carrierName: watchedEdit.carrierName,

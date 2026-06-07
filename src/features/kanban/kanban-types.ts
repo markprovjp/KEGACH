@@ -7,6 +7,9 @@ export type KanbanOrder = {
   customer: string;
   phone: string;
   customerAddress?: string;
+  receiverName?: string;
+  receiverPhone?: string;
+  receiverAddress?: string;
   productSummary: string;
   total: number;
   codAmount: number;
