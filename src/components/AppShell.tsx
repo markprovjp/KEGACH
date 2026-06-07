@@ -10,7 +10,7 @@ import {
   PlusCircleOutlined,
   SunOutlined
 } from "@ant-design/icons";
-import { ConfigProvider, Layout, Menu, Switch, theme } from "antd";
+import { App as AntdApp, ConfigProvider, Layout, Menu, Switch, theme } from "antd";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type React from "react";
@@ -62,27 +62,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ConfigProvider theme={antdTheme}>
-      <Layout className={`page-shell theme-${themeMode}`}>
-        <Sider width={236} theme={themeMode}>
-          <div className="brand-block">
-            <h2 className="brand-title">KeGach Ops</h2>
-            <div className="brand-subtitle">Kiot là sổ cái, app là vận hành</div>
-          </div>
-          <Menu theme={themeMode} mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
-        </Sider>
-        <Layout>
-          <Header className="app-header">
-            <strong>Long Hải Plastic Operations</strong>
-            <Switch
-              checked={themeMode === "dark"}
-              checkedChildren={<MoonOutlined />}
-              unCheckedChildren={<SunOutlined />}
-              onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
-            />
-          </Header>
-          <Content className="content-shell">{children}</Content>
+      <AntdApp>
+        <Layout className={`page-shell theme-${themeMode}`}>
+          <Sider width={236} theme={themeMode}>
+            <div className="brand-block">
+              <h2 className="brand-title">KeGach Ops</h2>
+              <div className="brand-subtitle">Kiot là sổ cái, app là vận hành</div>
+            </div>
+            <Menu theme={themeMode} mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
+          </Sider>
+          <Layout>
+            <Header className="app-header">
+              <strong>Long Hải Plastic Operations</strong>
+              <Switch
+                checked={themeMode === "dark"}
+                checkedChildren={<MoonOutlined />}
+                unCheckedChildren={<SunOutlined />}
+                onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
+              />
+            </Header>
+            <Content className="content-shell">{children}</Content>
+          </Layout>
         </Layout>
-      </Layout>
+      </AntdApp>
     </ConfigProvider>
   );
 }

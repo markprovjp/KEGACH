@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
+import { App, Button, Form, Input, Modal, Popconfirm, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -20,6 +20,7 @@ type ReconciliationRow = {
 };
 
 export function ReconciliationTable() {
+  const { message } = App.useApp();
   const [mounted, setMounted] = useState(false);
   const [rows, setRows] = useState<ReconciliationRow[]>([]);
   const [loading, setLoading] = useState(true);

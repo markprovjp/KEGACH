@@ -1,7 +1,7 @@
 "use client";
 
 import { DeleteOutlined, EditOutlined, PhoneOutlined, PlusOutlined, SaveOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
+import { App, Button, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -10,6 +10,7 @@ type CarrierRow = { id: string; key: string; name: string; phone: string; route:
 type DispatchOrder = { id: string; kiotInvoiceCode: string; province: string; driver?: string; status: string };
 
 export function DispatchBoard() {
+  const { message } = App.useApp();
   const [carriers, setCarriers] = useState<CarrierRow[]>([]);
   const [orders, setOrders] = useState<DispatchOrder[]>([]);
   const [loading, setLoading] = useState(true);

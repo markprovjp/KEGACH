@@ -1,7 +1,7 @@
 "use client";
 
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
-import { Alert, Button, Drawer, Form, Input, InputNumber, Segmented, Select, Space, Switch, Tabs, message } from "antd";
+import { Alert, App, Button, Drawer, Form, Input, InputNumber, Segmented, Select, Space, Switch, Tabs } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, limitRows, type PageSizeValue } from "@/components/PageSizeControl";
 import { canTransitionOrder, orderStatusLabels, orderStatuses } from "@/features/orders/order-status";
@@ -29,6 +29,7 @@ const columns: KanbanColumnDefinition[] = [
 ];
 
 export function KanbanBoard() {
+  const { message } = App.useApp();
   const [orders, setOrders] = useState<KanbanOrder[]>([]);
   const [carriers, setCarriers] = useState<CarrierOption[]>([]);
   const [query, setQuery] = useState("");

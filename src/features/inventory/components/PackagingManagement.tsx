@@ -1,7 +1,7 @@
 "use client";
 
 import { SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, InputNumber, Select, Space, Statistic, Table, Tag, message } from "antd";
+import { Alert, App, Button, Form, Input, InputNumber, Select, Space, Statistic, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -59,6 +59,7 @@ const emptyResponse: PackagingResponse = {
 };
 
 export function PackagingManagement() {
+  const { message } = App.useApp();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [data, setData] = useState<PackagingResponse>(emptyResponse);
   const [inventory, setInventory] = useState<InventoryRow[]>([]);

@@ -1,7 +1,7 @@
 "use client";
 
 import { DeleteOutlined, FileTextOutlined, MessageOutlined, PlusOutlined, PrinterOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tabs, Tag, Typography, message } from "antd";
+import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tabs, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -117,6 +117,7 @@ const defaultMessageText = `B07 ship e 1 thùng
 20kg ke nêm 1.5mm`;
 
 export function OrderEntryForm() {
+  const { message } = App.useApp();
   const [form] = Form.useForm<OrderFormValues>();
   const [quickProductForm] = Form.useForm<QuickProductFormValues>();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
