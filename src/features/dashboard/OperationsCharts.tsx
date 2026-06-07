@@ -13,6 +13,7 @@ type ChartOrder = {
 
 const statusColors: Record<OrderStatus, string> = {
   draft: "#8c8c8c",
+  awaiting_stock: "#d48806",
   awaiting_kiot: "#faad14",
   kiot_linked: "#1677ff",
   reserved: "#52c41a",

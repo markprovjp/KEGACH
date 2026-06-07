@@ -1,61 +1,69 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getWorkflowMissing, normalizeWorkflowChecks } from "@/features/orders/order-workflow";
+import type { OrderStatus } from "@/features/orders/order-status";
+import { getWorkflowDataMissing, getWorkflowMissing, normalizeWorkflowChecks } from "@/features/orders/order-workflow";
 
 export async function GET() {
   const orders = await prisma.order.findMany({
     include: {
-      items: { include: { product: true } },
+      items: { include: { product: { include: { inventoryMovement: true } } } },
       shipments: true
     },
     orderBy: { createdAt: "desc" }
   });
 
-  return NextResponse.json(orders.map((order) => ({
-    id: order.id,
-    code: order.code,
-    createdAt: order.createdAt.toISOString(),
-    kiotInvoiceCode: order.kiotInvoiceCode ?? "Chưa gắn Kiot",
-    customer: order.customerName,
-    phone: order.customerPhone ?? "-",
-    customerAddress: order.customerAddress ?? undefined,
-    productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity} ${item.product.unit}`).join(", ") || "Chưa có hàng",
-    total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
-    codAmount: order.codAmount,
-    province: order.province ?? "-",
-    sendDate: order.promisedSendAt?.toISOString().slice(0, 10) ?? "Chưa hẹn",
-    driver: order.shipments[0]?.carrierName ?? order.shipments[0]?.driverName ?? undefined,
-    carrierName: order.shipments[0]?.carrierName ?? undefined,
-    driverName: order.shipments[0]?.driverName ?? undefined,
-    warnings: order.paymentKind === "debt" ? ["Công nợ"] : [],
-    status: order.status,
-    orderType: order.orderType,
-    isOfficial: order.isOfficial,
-    paymentKind: order.paymentKind,
-    paymentStatus: order.paymentStatus,
-    deliveryMode: order.shipments[0]?.deliveryMode,
-    freightPayer: order.shipments[0]?.freightPayer,
-    packageCount: order.shipments[0]?.packageCount ?? 0,
-    estimatedWeightKg: order.shipments[0]?.estimatedWeightKg ?? 0,
-    note: order.note ?? undefined,
-    workflowChecks: normalizeWorkflowChecks(order.workflowChecks),
-    workflowMissing: getWorkflowMissing({
+  return NextResponse.json(orders.map((order) => {
+    const shortages = shortagesFromOrderItems(order.items);
+    const warnings = [
+      ...(order.paymentKind === "debt" ? ["Công nợ"] : []),
+      ...shortages.map((shortage) => `Thiếu hàng: ${shortage.productName} thiếu ${shortage.shortage.toLocaleString("vi-VN")} ${shortage.unit}`)
+    ];
+    return {
+      id: order.id,
+      code: order.code,
+      createdAt: order.createdAt.toISOString(),
+      kiotInvoiceCode: order.kiotInvoiceCode ?? "Chưa gắn Kiot",
+      customer: order.customerName,
+      phone: order.customerPhone ?? "-",
+      customerAddress: order.customerAddress ?? undefined,
+      productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity} ${item.product.unit}`).join(", ") || "Chưa có hàng",
+      total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+      codAmount: order.codAmount,
+      province: order.province ?? "-",
+      sendDate: order.promisedSendAt?.toISOString().slice(0, 10) ?? "Chưa hẹn",
+      driver: order.shipments[0]?.carrierName ?? order.shipments[0]?.driverName ?? undefined,
+      carrierName: order.shipments[0]?.carrierName ?? undefined,
+      driverName: order.shipments[0]?.driverName ?? undefined,
+      warnings,
       status: order.status,
       orderType: order.orderType,
       isOfficial: order.isOfficial,
-      kiotInvoiceCode: order.kiotInvoiceCode,
-      customerName: order.customerName,
-      customerPhone: order.customerPhone,
-      customerAddress: order.customerAddress,
-      codAmount: order.codAmount,
+      paymentKind: order.paymentKind,
       paymentStatus: order.paymentStatus,
-      carrierName: order.shipments[0]?.carrierName,
       deliveryMode: order.shipments[0]?.deliveryMode,
-      packageCount: order.shipments[0]?.packageCount,
-      estimatedWeightKg: order.shipments[0]?.estimatedWeightKg,
-      workflowChecks: order.workflowChecks
-    })
-  })));
+      freightPayer: order.shipments[0]?.freightPayer,
+      packageCount: order.shipments[0]?.packageCount ?? 0,
+      estimatedWeightKg: order.shipments[0]?.estimatedWeightKg ?? 0,
+      note: order.note ?? undefined,
+      workflowChecks: normalizeWorkflowChecks(order.workflowChecks),
+      workflowMissing: getWorkflowMissing({
+        status: order.status,
+        orderType: order.orderType,
+        isOfficial: order.isOfficial,
+        kiotInvoiceCode: order.kiotInvoiceCode,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        customerAddress: order.customerAddress,
+        codAmount: order.codAmount,
+        paymentStatus: order.paymentStatus,
+        carrierName: order.shipments[0]?.carrierName,
+        deliveryMode: order.shipments[0]?.deliveryMode,
+        packageCount: order.shipments[0]?.packageCount,
+        estimatedWeightKg: order.shipments[0]?.estimatedWeightKg,
+        workflowChecks: order.workflowChecks
+      })
+    };
+  }));
 }
 
 export async function POST(request: Request) {
@@ -64,8 +72,14 @@ export async function POST(request: Request) {
   if (existing) return NextResponse.json({ error: "Hóa đơn Kiot đã tồn tại" }, { status: 409 });
 
   const customer = await resolveCustomer(body);
-  const isOfficial = Boolean(body.isOfficial || body.kiotInvoiceCode);
+  const isOfficial = Boolean(body.isOfficial);
   const workflowChecks = normalizeWorkflowChecks(body.workflowChecks);
+  const lines = (body.lines ?? []).filter((line: { productId?: string }) => line.productId).map((line: { productId: string; quantity: number; unitPrice: number }) => ({
+    productId: line.productId,
+    quantity: Number(line.quantity),
+    unitPrice: Number(line.unitPrice)
+  }));
+  const shortages = await getShortagesForLines(lines);
   const shipmentInput = {
     deliveryMode: body.deliveryMode || "truck_share",
     freightPayer: body.freightPayer || "customer",
@@ -74,7 +88,7 @@ export async function POST(request: Request) {
     carrierName: body.carrierName || null,
     driverName: body.driverName || null
   };
-  const missing = getWorkflowMissing({
+  const hardMissing = getWorkflowDataMissing({
     status: isOfficial && body.kiotInvoiceCode ? "kiot_linked" : "draft",
     orderType: body.orderType,
     isOfficial,
@@ -87,17 +101,21 @@ export async function POST(request: Request) {
     ...shipmentInput,
     workflowChecks
   });
-  if (isOfficial && missing.length > 0) {
-    return NextResponse.json({ error: "Đơn chính thức chưa đủ quy trình", missing }, { status: 422 });
+  if (isOfficial && hardMissing.length > 0) {
+    return NextResponse.json({ error: "Đơn chính thức thiếu thông tin bắt buộc", missing: hardMissing }, { status: 422 });
   }
   const count = await prisma.order.count();
+  const status: OrderStatus = shortages.length ? "awaiting_stock" : isOfficial && body.kiotInvoiceCode ? "kiot_linked" : "draft";
+  const shortageNote = shortages.length
+    ? `Thiếu hàng: ${shortages.map((item) => `${item.productName} thiếu ${item.shortage.toLocaleString("vi-VN")} ${item.unit}`).join("; ")}`
+    : "";
   const order = await prisma.order.create({
     data: {
       code: `KG${String(count + 1).padStart(5, "0")}`,
       kiotInvoiceCode: body.kiotInvoiceCode || null,
       sourceChannel: body.sourceChannel || "kiot_print",
       orderType: body.orderType || "online",
-      status: isOfficial && body.kiotInvoiceCode ? "kiot_linked" : "draft",
+      status,
       isOfficial,
       customerId: customer?.id,
       customerName: body.customerName || "Khách lẻ",
@@ -107,15 +125,11 @@ export async function POST(request: Request) {
       codAmount: Number(body.codAmount ?? 0),
       paymentKind: body.paymentKind || "debt",
       paymentStatus: body.paymentStatus || "unpaid",
-      note: body.note || null,
+      note: [body.note, shortageNote].filter(Boolean).join("\n") || null,
       rawChat: body.rawText || null,
       workflowChecks,
       items: {
-        create: (body.lines ?? []).filter((line: { productId?: string }) => line.productId).map((line: { productId: string; quantity: number; unitPrice: number }) => ({
-          productId: line.productId,
-          quantity: Number(line.quantity),
-          unitPrice: Number(line.unitPrice)
-        }))
+        create: lines
       },
       shipments: {
         create: {
@@ -127,6 +141,83 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(order);
+}
+
+type ShortageLine = {
+  productId: string;
+  productName: string;
+  unit: string;
+  requested: number;
+  available: number;
+  shortage: number;
+};
+
+type ProductWithMovements = {
+  id: string;
+  name: string;
+  unit: string;
+  inventoryMovement: Array<{ type: string; quantity: number }>;
+};
+
+type OrderItemWithStock = {
+  productId: string;
+  quantity: number;
+  product: ProductWithMovements;
+};
+
+async function getShortagesForLines(lines: Array<{ productId: string; quantity: number }>): Promise<ShortageLine[]> {
+  const requested = new Map<string, number>();
+  for (const line of lines) requested.set(line.productId, (requested.get(line.productId) ?? 0) + Number(line.quantity ?? 0));
+  if (!requested.size) return [];
+  const products = await prisma.product.findMany({
+    where: { id: { in: Array.from(requested.keys()) } },
+    include: { inventoryMovement: true }
+  });
+  return products
+    .map((product) => {
+      const quantity = requested.get(product.id) ?? 0;
+      const available = getAvailable(product.inventoryMovement);
+      return {
+        productId: product.id,
+        productName: product.name,
+        unit: product.unit,
+        requested: quantity,
+        available,
+        shortage: Math.max(0, quantity - available)
+      };
+    })
+    .filter((item) => item.shortage > 0);
+}
+
+function shortagesFromOrderItems(items: OrderItemWithStock[]): ShortageLine[] {
+  return items
+    .map((item) => {
+      const available = getAvailable(item.product.inventoryMovement);
+      return {
+        productId: item.productId,
+        productName: item.product.name,
+        unit: item.product.unit,
+        requested: item.quantity,
+        available,
+        shortage: Math.max(0, item.quantity - available)
+      };
+    })
+    .filter((item) => item.shortage > 0);
+}
+
+function getAvailable(movements: Array<{ type: string; quantity: number }>): number {
+  const stock = movements.reduce((snapshot, movement) => {
+    if (["purchase_in", "return_in", "manual_adjustment", "package_produce"].includes(movement.type)) snapshot.onHand += movement.quantity;
+    if (movement.type === "reserve") snapshot.reserved += movement.quantity;
+    if (movement.type === "release_reservation") snapshot.reserved -= movement.quantity;
+    if (movement.type === "ship") {
+      snapshot.onHand -= movement.quantity;
+      snapshot.reserved -= movement.quantity;
+    }
+    if (["damage_out", "package_consume"].includes(movement.type)) snapshot.onHand -= movement.quantity;
+    return snapshot;
+  }, { onHand: 0, reserved: 0 });
+  return stock.onHand - stock.reserved;
 }
 
 async function resolveCustomer(body: { customerId?: string; customerName?: string; customerPhone?: string; customerAddress?: string; province?: string; note?: string }) {

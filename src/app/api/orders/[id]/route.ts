@@ -8,7 +8,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function PUT(request: Request, context: RouteContext) {
   const { id } = await context.params;
   const body = await request.json();
-  const existing = await prisma.order.findUnique({ where: { id }, include: { shipments: true } });
+  const existing = await prisma.order.findUnique({ where: { id }, include: { shipments: true, items: { include: { product: { include: { inventoryMovement: true } } } } } });
   if (!existing) return NextResponse.json({ error: "Không tìm thấy đơn" }, { status: 404 });
 
   const kiotInvoiceCode = body.kiotInvoiceCode?.trim() || null;
@@ -37,6 +37,13 @@ export async function PUT(request: Request, context: RouteContext) {
   };
   const move = canMoveToStatus(nextWorkflow, nextStatus);
   if (!move.ok) return NextResponse.json({ error: "Chưa đủ checklist để chuyển trạng thái", missing: move.missing }, { status: 422 });
+  const shortages = shortagesFromOrderItems(existing.items);
+  if (["reserved", "packing", "packed", "waiting_vehicle", "scheduled", "shipped", "delivered"].includes(nextStatus) && shortages.length > 0) {
+    return NextResponse.json({
+      error: "Chưa đủ hàng để chuyển trạng thái",
+      missing: shortages.map((item) => `${item.productName} thiếu ${item.shortage.toLocaleString("vi-VN")} ${item.unit}`)
+    }, { status: 422 });
+  }
 
   const order = await prisma.order.update({
     where: { id },
@@ -62,7 +69,7 @@ export async function PUT(request: Request, context: RouteContext) {
         }
       }
     },
-    include: { items: { include: { product: true } }, shipments: true }
+    include: { items: { include: { product: { include: { inventoryMovement: true } } } }, shipments: true }
   });
 
   return NextResponse.json(toOrderRow(order));
@@ -110,11 +117,16 @@ type OrderWithRelations = {
   status: OrderStatus;
   note: string | null;
   workflowChecks: unknown;
-  items: Array<{ quantity: number; unitPrice: number; product: { name: string; unit: string } }>;
+  items: Array<{ productId: string; quantity: number; unitPrice: number; product: { name: string; unit: string; inventoryMovement: Array<{ type: string; quantity: number }> } }>;
   shipments: Array<{ carrierName: string | null; driverName: string | null; deliveryMode: string; freightPayer: string; packageCount: number; estimatedWeightKg: number }>;
 };
 
 function toOrderRow(order: OrderWithRelations) {
+  const shortages = shortagesFromOrderItems(order.items);
+  const warnings = [
+    ...(order.paymentKind === "debt" ? ["Công nợ"] : []),
+    ...shortages.map((shortage) => `Thiếu hàng: ${shortage.productName} thiếu ${shortage.shortage.toLocaleString("vi-VN")} ${shortage.unit}`)
+  ];
   return {
     id: order.id,
     code: order.code,
@@ -131,7 +143,7 @@ function toOrderRow(order: OrderWithRelations) {
     driver: order.shipments[0]?.carrierName ?? order.shipments[0]?.driverName ?? undefined,
     carrierName: order.shipments[0]?.carrierName ?? undefined,
     driverName: order.shipments[0]?.driverName ?? undefined,
-    warnings: order.paymentKind === "debt" ? ["Công nợ"] : [],
+    warnings,
     status: order.status,
     orderType: order.orderType,
     isOfficial: order.isOfficial,
@@ -160,4 +172,44 @@ function toOrderRow(order: OrderWithRelations) {
       workflowChecks: order.workflowChecks
     })
   };
+}
+
+type ShortageLine = {
+  productId: string;
+  productName: string;
+  unit: string;
+  requested: number;
+  available: number;
+  shortage: number;
+};
+
+function shortagesFromOrderItems(items: OrderWithRelations["items"]): ShortageLine[] {
+  return items
+    .map((item) => {
+      const available = getAvailable(item.product.inventoryMovement);
+      return {
+        productId: item.productId,
+        productName: item.product.name,
+        unit: item.product.unit,
+        requested: item.quantity,
+        available,
+        shortage: Math.max(0, item.quantity - available)
+      };
+    })
+    .filter((item) => item.shortage > 0);
+}
+
+function getAvailable(movements: Array<{ type: string; quantity: number }>): number {
+  const stock = movements.reduce((snapshot, movement) => {
+    if (["purchase_in", "return_in", "manual_adjustment", "package_produce"].includes(movement.type)) snapshot.onHand += movement.quantity;
+    if (movement.type === "reserve") snapshot.reserved += movement.quantity;
+    if (movement.type === "release_reservation") snapshot.reserved -= movement.quantity;
+    if (movement.type === "ship") {
+      snapshot.onHand -= movement.quantity;
+      snapshot.reserved -= movement.quantity;
+    }
+    if (["damage_out", "package_consume"].includes(movement.type)) snapshot.onHand -= movement.quantity;
+    return snapshot;
+  }, { onHand: 0, reserved: 0 });
+  return stock.onHand - stock.reserved;
 }

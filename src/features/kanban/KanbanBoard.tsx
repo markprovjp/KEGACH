@@ -11,10 +11,12 @@ import { KanbanColumn } from "./KanbanColumn";
 import type { KanbanColumnDefinition, KanbanOrder } from "./kanban-types";
 
 type CarrierOption = { id: string; name: string; phone: string; route: string };
-type QuickFilter = "all" | "needsPacking" | "waitingCarrier" | "cod" | "debt" | "problem";
+type QuickFilter = "all" | "draft" | "stockShortage" | "needsPacking" | "waitingCarrier" | "cod" | "debt" | "problem";
 type KanbanFormValues = KanbanOrder & { customerName?: string; customerPhone?: string };
 
 const columns: KanbanColumnDefinition[] = [
+  { status: "draft", title: "Đơn nháp" },
+  { status: "awaiting_stock", title: "Chờ nhập hàng" },
   { status: "awaiting_kiot", title: "Chờ HĐ Kiot" },
   { status: "kiot_linked", title: "Đã gắn Kiot" },
   { status: "reserved", title: "Đã giữ hàng" },
@@ -56,6 +58,8 @@ export function KanbanBoard() {
   const grouped = useMemo(() => new Map(columns.map((column) => [column.status, filteredOrders.filter((order) => order.status === column.status)])), [filteredOrders]);
   const boardStats = useMemo(() => ({
     total: filteredOrders.length,
+    drafts: filteredOrders.filter((order) => order.status === "draft").length,
+    stockShortage: filteredOrders.filter((order) => order.status === "awaiting_stock" || order.warnings.some((warning) => warning.includes("Thiếu hàng"))).length,
     needsPacking: filteredOrders.filter((order) => ["reserved", "packing", "packed"].includes(order.status)).length,
     waitingCarrier: filteredOrders.filter((order) => !order.carrierName || order.status === "waiting_vehicle").length,
     cod: filteredOrders.filter((order) => order.codAmount > 0).length,
@@ -173,6 +177,8 @@ export function KanbanBoard() {
       />
       <div className="kanban-summary-strip">
         <div className="kanban-summary-card"><span>Tổng đang xem</span><b>{boardStats.total}</b></div>
+        <div className="kanban-summary-card"><span>Đơn nháp</span><b>{boardStats.drafts}</b></div>
+        <div className="kanban-summary-card"><span>Thiếu hàng</span><b>{boardStats.stockShortage}</b></div>
         <div className="kanban-summary-card"><span>Cần đóng</span><b>{boardStats.needsPacking}</b></div>
         <div className="kanban-summary-card"><span>Chưa/chờ xe</span><b>{boardStats.waitingCarrier}</b></div>
         <div className="kanban-summary-card"><span>COD</span><b>{boardStats.cod}</b></div>
@@ -193,6 +199,8 @@ export function KanbanBoard() {
               onChange={(value) => setQuickFilter(value as QuickFilter)}
               options={[
                 { value: "all", label: "Tất cả" },
+                { value: "draft", label: "Đơn nháp" },
+                { value: "stockShortage", label: "Thiếu hàng" },
                 { value: "needsPacking", label: "Cần đóng" },
                 { value: "waitingCarrier", label: "Chưa/chờ xe" },
                 { value: "cod", label: "COD" },
@@ -302,6 +310,8 @@ function uniqueOptions(values: string[]) {
 }
 
 function matchesQuickFilter(order: KanbanOrder, filter: QuickFilter) {
+  if (filter === "draft") return order.status === "draft";
+  if (filter === "stockShortage") return order.status === "awaiting_stock" || order.warnings.some((warning) => warning.includes("Thiếu hàng"));
   if (filter === "needsPacking") return ["reserved", "packing", "packed"].includes(order.status);
   if (filter === "waitingCarrier") return !order.carrierName || order.status === "waiting_vehicle";
   if (filter === "cod") return order.codAmount > 0;

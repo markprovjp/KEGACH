@@ -1,7 +1,7 @@
 "use client";
 
 import { FileTextOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
-import { Button, DatePicker, Form, Input, InputNumber, Select, Space, Table, Tabs, Typography, message } from "antd";
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Segmented, Select, Space, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -18,6 +18,12 @@ type Line = {
   productName?: string;
   quantity: number;
   unitPrice: number;
+};
+
+type InventoryRow = {
+  productId: string;
+  available: number;
+  unit: string;
 };
 
 type OrderFormValues = {
@@ -84,15 +90,28 @@ export function OrderEntryForm() {
   const [form] = Form.useForm<OrderFormValues>();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [carriers, setCarriers] = useState<CarrierOption[]>([]);
+  const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [rawText, setRawText] = useState(defaultInvoiceText);
   const [saving, setSaving] = useState(false);
   const [linePageSize, setLinePageSize] = useState<PageSizeValue>(10);
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
   const watchedValues = Form.useWatch([], form) ?? {};
+  const isOfficial = Boolean(watchedValues.isOfficial);
+  const stockByProductId = useMemo(() => new Map(inventory.map((row) => [row.productId, row])), [inventory]);
+  const stockWarnings = useMemo(() => lines
+    .map((line) => {
+      if (!line.productId) return null;
+      const stock = stockByProductId.get(line.productId);
+      const productName = products.find((product) => product.id === line.productId)?.name ?? line.productName ?? "Sản phẩm";
+      const shortage = Math.max(0, line.quantity - (stock?.available ?? 0));
+      return shortage > 0 ? `${productName} thiếu ${shortage.toLocaleString("vi-VN")} ${stock?.unit ?? ""}` : null;
+    })
+    .filter((item): item is string => Boolean(item)), [lines, products, stockByProductId]);
 
   useEffect(() => {
     void loadProducts();
+    void loadInventory();
     fetch("/api/carriers").then((response) => response.json()).then(setCarriers).catch(() => setCarriers([]));
   }, []);
 
@@ -109,6 +128,25 @@ export function OrderEntryForm() {
       render: (_, record) => <InputNumber min={1} value={record.quantity} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} />
     },
     {
+      title: "Tồn khả dụng",
+      dataIndex: "productId",
+      width: 140,
+      render: (_, record) => {
+        const stock = record.productId ? stockByProductId.get(record.productId) : undefined;
+        return stock ? `${stock.available.toLocaleString("vi-VN")} ${stock.unit}` : "-";
+      }
+    },
+    {
+      title: "Thiếu",
+      dataIndex: "productId",
+      width: 120,
+      render: (_, record) => {
+        const stock = record.productId ? stockByProductId.get(record.productId) : undefined;
+        const shortage = Math.max(0, record.quantity - (stock?.available ?? 0));
+        return shortage > 0 ? <Tag color="red">{shortage.toLocaleString("vi-VN")} {stock?.unit}</Tag> : <Tag color="green">Đủ</Tag>;
+      }
+    },
+    {
       title: "Đơn giá",
       dataIndex: "unitPrice",
       width: 160,
@@ -119,6 +157,11 @@ export function OrderEntryForm() {
   async function loadProducts() {
     const response = await fetch("/api/products");
     setProducts(await response.json());
+  }
+
+  async function loadInventory() {
+    const response = await fetch("/api/inventory");
+    setInventory(await response.json());
   }
 
   function updateLine(key: string, patch: Partial<Line>) {
@@ -160,8 +203,9 @@ export function OrderEntryForm() {
     message.success("Đã trích xuất hóa đơn Kiot vào đơn vận hành");
   }
 
-  async function saveOrder() {
-    const values = form.getFieldsValue();
+  async function saveOrder(nextOfficial = isOfficial) {
+    const values = { ...form.getFieldsValue(), isOfficial: nextOfficial };
+    form.setFieldValue("isOfficial", nextOfficial);
     setSaving(true);
     const response = await fetch("/api/orders", {
       method: "POST",
@@ -175,11 +219,27 @@ export function OrderEntryForm() {
       return;
     }
     const order = await response.json();
-    message.success(`Đã lưu đơn ${order.code} vào database`);
+    const statusText = order.status === "awaiting_stock" ? " - đang chờ nhập hàng" : nextOfficial ? " - đơn chính thức" : " - đơn nháp";
+    message.success(`Đã lưu đơn ${order.code}${statusText}`);
   }
 
   return (
     <Form form={form} layout="vertical" className="order-form" initialValues={{ sourceChannel: "kiot_print", orderType: "online", isOfficial: false, paymentKind: "debt", paymentStatus: "unpaid", deliveryMode: "truck_share", freightPayer: "customer", workflowChecks: [] }}>
+      <div className="order-mode-panel">
+        <div>
+          <Typography.Text strong>Chế độ lên đơn</Typography.Text>
+          <div className="muted">Đơn nháp dùng để gửi Tân chuẩn bị hàng hoặc giữ nhu cầu khi đang thiếu hàng. Đơn chính thức là đơn đã chốt, có hóa đơn Kiot.</div>
+        </div>
+        <Segmented
+          value={isOfficial ? "official" : "draft"}
+          onChange={(value) => form.setFieldValue("isOfficial", value === "official")}
+          options={[
+            { value: "draft", label: "Đơn nháp" },
+            { value: "official", label: "Đơn chính thức" }
+          ]}
+        />
+      </div>
+      {stockWarnings.length ? <Alert type="warning" showIcon title="Có hàng thiếu, đơn sẽ vào cột Chờ nhập hàng" description={stockWarnings.slice(0, 5).join(" • ")} style={{ marginBottom: 12 }} /> : null}
       <div className="order-workbench">
         <Tabs
           type="card"
@@ -247,7 +307,7 @@ export function OrderEntryForm() {
                     <Button icon={<PlusOutlined />} onClick={addLine}>Thêm dòng</Button>
                     <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
                   </div>
-                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length, setLinePageSize)} columns={columns} dataSource={lines} />
+                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length, setLinePageSize)} columns={columns} dataSource={lines} scroll={{ x: 780 }} />
                 </>
               )
             },
@@ -301,7 +361,8 @@ export function OrderEntryForm() {
       </div>
       <div className="order-action-bar">
         <Space>
-          <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={saveOrder}>Lưu đơn vào database</Button>
+          <Button icon={<SaveOutlined />} loading={saving} onClick={() => saveOrder(false)}>Lưu đơn nháp</Button>
+          <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => saveOrder(true)}>Lưu đơn chính thức</Button>
           <Button onClick={() => message.info("Đã tạo phiếu đóng hàng mẫu")}>In phiếu đóng hàng</Button>
         </Space>
       </div>

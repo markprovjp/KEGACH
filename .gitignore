@@ -9,5 +9,6 @@ prisma/dev.db-journal
 .superpowers/
 *.tsbuildinfo
 tool_events.jsonl
+.next-dev*.log
 khachhang.json
 sanpham.json

@@ -1,5 +1,6 @@
 export const orderStatuses = [
   "draft",
+  "awaiting_stock",
   "awaiting_kiot",
   "kiot_linked",
   "reserved",
@@ -17,17 +18,18 @@ export const orderStatuses = [
 export type OrderStatus = (typeof orderStatuses)[number];
 
 const normalFlow: Record<OrderStatus, OrderStatus[]> = {
-  draft: ["awaiting_kiot", "kiot_linked", "cancelled"],
-  awaiting_kiot: ["kiot_linked", "cancelled", "problem"],
-  kiot_linked: ["reserved", "cancelled", "problem"],
-  reserved: ["kiot_linked", "packing", "cancelled", "problem"],
+  draft: ["awaiting_stock", "awaiting_kiot", "kiot_linked", "cancelled"],
+  awaiting_stock: ["draft", "awaiting_kiot", "kiot_linked", "cancelled", "problem"],
+  awaiting_kiot: ["awaiting_stock", "kiot_linked", "cancelled", "problem"],
+  kiot_linked: ["awaiting_stock", "reserved", "cancelled", "problem"],
+  reserved: ["awaiting_stock", "kiot_linked", "packing", "cancelled", "problem"],
   packing: ["packed", "reserved", "problem"],
   packed: ["waiting_vehicle", "packing", "problem"],
   waiting_vehicle: ["scheduled", "packed", "problem"],
   scheduled: ["shipped", "waiting_vehicle", "problem"],
   shipped: ["delivered", "returned", "problem"],
   delivered: ["returned", "problem"],
-  problem: ["awaiting_kiot", "kiot_linked", "reserved", "packing", "packed", "waiting_vehicle", "scheduled", "cancelled"],
+  problem: ["draft", "awaiting_stock", "awaiting_kiot", "kiot_linked", "reserved", "packing", "packed", "waiting_vehicle", "scheduled", "cancelled"],
   cancelled: [],
   returned: []
 };
@@ -59,6 +61,7 @@ export function assertTransitionAllowed(from: OrderStatus, to: OrderStatus, reas
 
 export const orderStatusLabels: Record<OrderStatus, string> = {
   draft: "Nháp",
+  awaiting_stock: "Chờ nhập hàng",
   awaiting_kiot: "Chờ hóa đơn Kiot",
   kiot_linked: "Đã gắn Kiot",
   reserved: "Đã giữ hàng",

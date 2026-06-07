@@ -5,6 +5,7 @@ describe("order status machine", () => {
   it("contains every operational status", () => {
     expect(orderStatuses).toEqual([
       "draft",
+      "awaiting_stock",
       "awaiting_kiot",
       "kiot_linked",
       "reserved",
@@ -21,6 +22,8 @@ describe("order status machine", () => {
   });
 
   it("allows normal fulfilment flow", () => {
+    expect(canTransitionOrder("draft", "awaiting_stock")).toBe(true);
+    expect(canTransitionOrder("awaiting_stock", "awaiting_kiot")).toBe(true);
     expect(canTransitionOrder("draft", "awaiting_kiot")).toBe(true);
     expect(canTransitionOrder("awaiting_kiot", "kiot_linked")).toBe(true);
     expect(canTransitionOrder("kiot_linked", "reserved")).toBe(true);
