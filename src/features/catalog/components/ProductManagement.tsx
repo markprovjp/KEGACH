@@ -41,7 +41,8 @@ export function ProductManagement() {
         render: (value?: string) => value ? <Image src={value} alt="Ảnh sản phẩm" width={44} height={44} style={{ objectFit: "cover", borderRadius: 6 }} /> : <div className="image-placeholder">Ảnh</div>
       },
       { title: "Sản phẩm", dataIndex: "name", fixed: "left", width: 260 },
-      { title: "Giá", dataIndex: "defaultPrice", align: "right", render: (value) => `${Number(value).toLocaleString("vi-VN")}đ` },
+      { title: "Giá đại lý", dataIndex: "defaultPrice", align: "right", width: 120, render: (value) => `${Number(value).toLocaleString("vi-VN")}đ` },
+      { title: "Giá phân phối", dataIndex: "distributorPrice", align: "right", width: 130, render: (value) => value == null ? "-" : `${Number(value).toLocaleString("vi-VN")}đ` },
       { title: "Đơn vị", dataIndex: "unit", width: 90 },
       { title: "Kg/đơn vị", dataIndex: "weightPerUnitKg", align: "right", width: 110 },
       { title: "Quy cách", dataIndex: "packageRule", render: (value) => value ?? "-" },
@@ -103,7 +104,9 @@ export function ProductManagement() {
       name: values.name,
       unit: values.unit,
       defaultPrice: Number(values.defaultPrice ?? 0),
+      distributorPrice: values.distributorPrice == null ? undefined : Number(values.distributorPrice),
       packageRule: values.packageRule,
+      description: values.description,
       imageUrl,
       weightPerUnitKg: Number(values.weightPerUnitKg ?? 0),
       aliases: String(values.aliasesText ?? "")
@@ -171,11 +174,13 @@ export function ProductManagement() {
           <Form.Item label="Tên sản phẩm" name="name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item label="Mã/SKU" name="sku"><Input /></Form.Item>
           <Space.Compact style={{ width: "100%" }}>
-            <Form.Item label="Giá" name="defaultPrice" style={{ width: "50%" }}><InputNumber min={0} step={1000} style={{ width: "100%" }} /></Form.Item>
-            <Form.Item label="Đơn vị" name="unit" style={{ width: "50%" }}><Input /></Form.Item>
+            <Form.Item label="Giá đại lý" name="defaultPrice" style={{ width: "34%" }}><InputNumber min={0} step={1000} style={{ width: "100%" }} /></Form.Item>
+            <Form.Item label="Giá phân phối" name="distributorPrice" style={{ width: "33%" }}><InputNumber min={0} step={1000} style={{ width: "100%" }} /></Form.Item>
+            <Form.Item label="Đơn vị" name="unit" style={{ width: "33%" }}><Input /></Form.Item>
           </Space.Compact>
           <Form.Item label="Khối lượng ước tính / đơn vị" name="weightPerUnitKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
           <Form.Item label="Quy cách" name="packageRule"><Input /></Form.Item>
+          <Form.Item label="Mô tả sản phẩm" name="description"><Input.TextArea rows={3} /></Form.Item>
           <Form.Item label="Alias, cách nhau bằng dấu phẩy" name="aliasesText"><Input.TextArea rows={3} /></Form.Item>
           <Form.Item label="Phân loại keo, mỗi dòng: mã số thùng + số tuýp" name="variantsText">
             <Input.TextArea rows={8} placeholder={"02 8tuyp\n04 26thung+9tuyp\nB14 50thung+29tuyp"} />

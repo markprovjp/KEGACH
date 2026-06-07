@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 export async function GET() {
   const products = await prisma.product.findMany({
-    include: { inventoryMovement: { orderBy: { createdAt: "desc" } } },
+    include: { inventoryMovement: { orderBy: { createdAt: "desc" } }, variants: { orderBy: { code: "asc" } } },
     orderBy: { name: "asc" }
   });
 
@@ -30,7 +30,8 @@ export async function GET() {
       reserved: stock.reserved,
       available: stock.onHand - stock.reserved,
       lowStockThreshold: Math.max(5, Math.round(stock.onHand * 0.25)),
-      lastMovement: product.inventoryMovement[0]?.note ?? "Chưa có biến động"
+      lastMovement: product.inventoryMovement[0]?.note ?? "Chưa có biến động",
+      variants: product.variants.map((variant) => ({ code: variant.code, cartonCount: variant.cartonCount, tubeCount: variant.tubeCount }))
     };
   }));
 }

@@ -11,7 +11,9 @@ async function main() {
         name: product.name,
         unit: product.unit,
         defaultPrice: product.defaultPrice,
+        distributorPrice: product.distributorPrice ?? null,
         packageRule: product.packageRule,
+        description: product.description ?? null,
         weightPerUnitKg: product.weightPerUnitKg ?? estimateWeightKg(product.packageRule, product.unit),
         aliases: {
           deleteMany: {},
@@ -29,7 +31,9 @@ async function main() {
         name: product.name,
         unit: product.unit,
         defaultPrice: product.defaultPrice,
+        distributorPrice: product.distributorPrice ?? null,
         packageRule: product.packageRule,
+        description: product.description ?? null,
         weightPerUnitKg: product.weightPerUnitKg ?? estimateWeightKg(product.packageRule, product.unit),
         aliases: {
           create: product.aliases.map((alias) => ({ value: alias.value }))

@@ -46,7 +46,9 @@ model Product {
   name              String
   unit              String
   defaultPrice      Int
+  distributorPrice  Int?
   packageRule       String?
+  description       String?
   imageUrl          String?
   aliases           ProductAlias[]
   variants          ProductVariant[]

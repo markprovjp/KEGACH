@@ -15,7 +15,9 @@ export type CatalogProduct = {
   name: string;
   unit: string;
   defaultPrice: number;
+  distributorPrice?: number;
   packageRule?: string;
+  description?: string;
   imageUrl?: string;
   weightPerUnitKg?: number;
   aliases: ProductAlias[];

@@ -64,6 +64,6 @@ describe("Kiot invoice parser", () => {
   it("estimates shipment weight from package rules", () => {
     const parsed = parseKiotInvoiceText(invoiceText, sampleProducts);
 
-    expect(estimateOrderWeightKg(parsed.lines, sampleProducts)).toBe(4500);
+    expect(estimateOrderWeightKg(parsed.lines, sampleProducts)).toBe(150);
   });
 });

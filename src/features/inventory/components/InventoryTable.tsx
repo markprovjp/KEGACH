@@ -5,6 +5,8 @@ import { Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import type { ProductVariant } from "@/features/catalog/catalog-types";
+import { buildVariantLabel } from "@/features/catalog/product-search-helpers";
 import { normalizeSearchText } from "@/lib/normalize";
 
 type InventoryRow = {
@@ -17,6 +19,7 @@ type InventoryRow = {
   lowStockThreshold: number;
   lastMovement: string;
   available: number;
+  variants?: ProductVariant[];
 };
 
 const movementOptions = [
@@ -47,7 +50,8 @@ export function InventoryTable() {
   const filteredRows = useMemo(() => {
     const normalized = normalizeSearchText(query);
     return rows.filter((row) => {
-      const matchesText = !normalized || normalizeSearchText(`${row.product} ${row.unit} ${row.lastMovement}`).includes(normalized);
+      const variantText = row.variants?.map((variant) => `${variant.code} ${variant.cartonCount} thung ${variant.tubeCount} tuyp`).join(" ") ?? "";
+      const matchesText = !normalized || normalizeSearchText(`${row.product} ${row.unit} ${row.lastMovement} ${variantText}`).includes(normalized);
       const matchesStock =
         stockFilter === "all" ||
         (stockFilter === "low" && row.available <= row.lowStockThreshold) ||
@@ -68,6 +72,12 @@ export function InventoryTable() {
         align: "right",
         width: 110,
         render: (value, row) => <Tag color={value <= row.lowStockThreshold ? "red" : "green"}>{value} {row.unit}</Tag>
+      },
+      {
+        title: "Tồn keo theo mã",
+        dataIndex: "variants",
+        width: 520,
+        render: (_, row) => row.variants?.length ? <div className="product-variant-list">{buildVariantLabel({ ...row, id: row.productId, name: row.product, defaultPrice: 0, aliases: [] }).split(", ").map((variant) => <Tag key={variant}>{variant}</Tag>)}</div> : "-"
       },
       {
         title: "Cảnh báo tồn thấp",
@@ -148,7 +158,7 @@ export function InventoryTable() {
         </Space>
         <PageSizeControl total={filteredRows.length} value={pageSize} onChange={setPageSize} />
       </div>
-      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={filteredRows} pagination={tablePagination(pageSize, filteredRows.length)} scroll={{ x: 1050 }} />
+      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={filteredRows} pagination={tablePagination(pageSize, filteredRows.length)} scroll={{ x: 1580 }} />
       <Modal title={`Điều chỉnh tồn: ${editing?.product ?? ""}`} open={!!editing} onCancel={() => setEditing(null)} onOk={saveAdjustment} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Loại biến động" name="type"><Select options={movementOptions} /></Form.Item>
