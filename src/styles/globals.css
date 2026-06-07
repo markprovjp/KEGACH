@@ -213,6 +213,12 @@ a {
   font-size: 12px;
 }
 
+.product-create-button {
+  text-align: left;
+  height: auto;
+  white-space: normal;
+}
+
 .compact-form-grid {
   align-items: start;
 }

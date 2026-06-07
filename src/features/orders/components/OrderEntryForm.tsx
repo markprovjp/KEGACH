@@ -1,7 +1,7 @@
 "use client";
 
 import { DeleteOutlined, FileTextOutlined, PlusOutlined, PrinterOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Segmented, Select, Space, Table, Tabs, Tag, Typography, message } from "antd";
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
@@ -66,6 +66,12 @@ type CustomerOption = {
 
 type EntryMode = "invoice" | "ocr";
 type OrderMode = "draft" | "official";
+type QuickProductFormValues = {
+  name: string;
+  unit: string;
+  defaultPrice: number;
+  packageRule?: string;
+};
 
 const defaultInvoiceText = `HÓA ĐƠN BÁN HÀNG
 Số hóa đơn: HD004066
@@ -100,6 +106,7 @@ Còn lại:
 
 export function OrderEntryForm() {
   const [form] = Form.useForm<OrderFormValues>();
+  const [quickProductForm] = Form.useForm<QuickProductFormValues>();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [carriers, setCarriers] = useState<CarrierOption[]>([]);
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
@@ -107,6 +114,7 @@ export function OrderEntryForm() {
   const [rawText, setRawText] = useState(defaultInvoiceText);
   const [entryMode, setEntryMode] = useState<EntryMode>("invoice");
   const [orderMode, setOrderMode] = useState<OrderMode>("draft");
+  const [quickProductLineKey, setQuickProductLineKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [linePageSize, setLinePageSize] = useState<PageSizeValue>(10);
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
@@ -148,7 +156,7 @@ export function OrderEntryForm() {
       title: "Tên hàng",
       dataIndex: "productId",
       width: 420,
-      render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} />
+      render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} onCreateRequest={(name) => openQuickProduct(record.key, name)} />
     },
     {
       title: "ĐVT",
@@ -160,20 +168,20 @@ export function OrderEntryForm() {
       dataIndex: "quantity",
       width: 130,
       align: "right",
-      render: (_, record) => <InputNumber min={1} value={record.quantity} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} style={{ width: "100%" }} />
+      render: (_, record) => <InputNumber min={1} value={record.quantity} formatter={formatNumberInput} parser={parseNumberInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} style={{ width: "100%" }} />
     },
     {
       title: "Đơn giá",
       dataIndex: "unitPrice",
       width: 150,
       align: "right",
-      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} style={{ width: "100%" }} />
+      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} style={{ width: "100%" }} />
     },
     {
       title: "Thành tiền",
       width: 150,
       align: "right",
-      render: (_, record) => `${(record.quantity * record.unitPrice).toLocaleString("vi-VN")}đ`
+      render: (_, record) => formatMoney(record.quantity * record.unitPrice)
     },
     {
       title: "Tồn/thiếu",
@@ -197,13 +205,13 @@ export function OrderEntryForm() {
       title: "Sản phẩm",
       dataIndex: "productId",
       width: 420,
-      render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} />
+      render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} onCreateRequest={(name) => openQuickProduct(record.key, name)} />
     },
     {
       title: "SL",
       dataIndex: "quantity",
       width: 120,
-      render: (_, record) => <InputNumber min={1} value={record.quantity} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} />
+      render: (_, record) => <InputNumber min={1} value={record.quantity} formatter={formatNumberInput} parser={parseNumberInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} />
     },
     {
       title: "Tồn khả dụng",
@@ -228,7 +236,7 @@ export function OrderEntryForm() {
       title: "Đơn giá",
       dataIndex: "unitPrice",
       width: 160,
-      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} />
+      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} />
     }
   ];
 
@@ -272,8 +280,44 @@ export function OrderEntryForm() {
     setLines((current) => [...current, { key: crypto.randomUUID(), quantity: 1, unitPrice: 0 }]);
   }
 
+  function openQuickProduct(lineKey: string, name: string) {
+    setQuickProductLineKey(lineKey);
+    quickProductForm.setFieldsValue({ name, unit: "cái", defaultPrice: 0, packageRule: "" });
+  }
+
   function removeLine(key: string) {
     setLines((current) => current.filter((line) => line.key !== key));
+  }
+
+  async function saveQuickProduct() {
+    const values = await quickProductForm.validateFields();
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: values.name.trim(),
+        unit: values.unit.trim(),
+        defaultPrice: Number(values.defaultPrice ?? 0),
+        packageRule: values.packageRule?.trim() || null,
+        aliases: [{ value: values.name.trim() }],
+        weightPerUnitKg: values.unit === "kg" ? 1 : 0
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Không thêm được sản phẩm" }));
+      message.error(error.error ?? "Không thêm được sản phẩm");
+      return;
+    }
+    const product = await response.json();
+    setProducts((current) => {
+      const filtered = current.filter((item) => item.id !== product.id);
+      return [...filtered, product].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+    });
+    await loadInventory();
+    if (quickProductLineKey) selectProductForLine({ key: quickProductLineKey, quantity: 1, unitPrice: 0 }, product.id);
+    setQuickProductLineKey(null);
+    quickProductForm.resetFields();
+    message.success(`Đã thêm sản phẩm ${product.name}`);
   }
 
   function applyKiotInvoice() {
@@ -402,6 +446,7 @@ export function OrderEntryForm() {
   }
 
   return (
+    <>
     <Form form={form} layout="vertical" className="order-form" initialValues={{ sourceChannel: "kiot_print", orderType: "online", isOfficial: false, paymentKind: "debt", paymentStatus: "unpaid", deliveryMode: "truck_share", freightPayer: "customer", workflowChecks: [] }}>
       <div className="order-mode-panel">
         <div>
@@ -456,7 +501,7 @@ export function OrderEntryForm() {
                           {parsed.lines.map((line) => (
                             <div key={`${line.sku}-${line.rawName}`} className="card-line">
                               <span>{line.productName}</span>
-                              <b>{line.quantity} x {line.unitPrice.toLocaleString("vi-VN")}đ</b>
+                          <b>{line.quantity.toLocaleString("vi-VN")} x {formatMoney(line.unitPrice)}</b>
                             </div>
                           ))}
                         </div>
@@ -501,7 +546,7 @@ export function OrderEntryForm() {
                       <Table rowKey="key" size="small" pagination={false} columns={invoiceColumns} dataSource={lines} scroll={{ x: 1280 }} />
                       <div className="manual-invoice-total">
                         <span>Tổng số lượng</span><b>{totalQuantity.toLocaleString("vi-VN")}</b>
-                        <span>Tổng thanh toán</span><b>{totalAmount.toLocaleString("vi-VN")}đ</b>
+                        <span>Tổng thanh toán</span><b>{formatMoney(totalAmount)}</b>
                       </div>
                     </div>
                   )}
@@ -554,7 +599,7 @@ export function OrderEntryForm() {
                 <div className="form-grid compact-form-grid">
                   <Form.Item label="Loại thanh toán" name="paymentKind"><Select options={[{ value: "debt", label: "Ghi nợ / chưa trả" }, { value: "cod", label: "Gửi COD" }]} /></Form.Item>
                   <Form.Item label="Trạng thái thanh toán" name="paymentStatus"><Select options={Object.entries(paymentStatusLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>
-                  <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} style={{ width: "100%" }} /></Form.Item>
+                  <Form.Item label="Tiền thu COD" name="codAmount"><InputNumber min={0} step={10000} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" style={{ width: "100%" }} /></Form.Item>
                   <Form.Item label="Loại gửi" name="deliveryMode"><Select options={[{ value: "truck_share", label: "Gửi xe tải ghép / nhà xe" }, { value: "direct_truck", label: "Xe tải riêng / giao thẳng" }]} /></Form.Item>
                   <Form.Item label="Cước" name="freightPayer"><Select options={[{ value: "customer", label: "Khách trả" }, { value: "company", label: "Cơ sở trả" }]} /></Form.Item>
                   <Form.Item label="Nhà xe / đơn vị giao" name="carrierName"><Select showSearch allowClear optionFilterProp="label" options={carriers.map((carrier) => ({ value: carrier.name, label: `${carrier.name} - ${carrier.route}` }))} /></Form.Item>
@@ -603,7 +648,46 @@ export function OrderEntryForm() {
         </Space>
       </div>
     </Form>
+    <Modal
+      title="Thêm sản phẩm mới"
+      open={Boolean(quickProductLineKey)}
+      onCancel={() => setQuickProductLineKey(null)}
+      onOk={saveQuickProduct}
+      okText="Lưu sản phẩm"
+      cancelText="Đóng"
+    >
+      <Form form={quickProductForm} layout="vertical">
+        <Form.Item label="Tên sản phẩm" name="name" rules={[{ required: true, message: "Nhập tên sản phẩm" }]}>
+          <Input />
+        </Form.Item>
+        <div className="form-grid compact-form-grid">
+          <Form.Item label="Đơn vị tính" name="unit" rules={[{ required: true, message: "Nhập đơn vị tính" }]}>
+            <Select options={[{ value: "kg", label: "kg" }, { value: "tuýp", label: "tuýp" }, { value: "cái", label: "cái" }, { value: "bộ", label: "bộ" }, { value: "thùng", label: "thùng" }, { value: "can", label: "can" }, { value: "túi", label: "túi" }]} />
+          </Form.Item>
+          <Form.Item label="Giá bán" name="defaultPrice" rules={[{ required: true, message: "Nhập giá bán" }]}>
+            <InputNumber min={0} step={1000} formatter={formatNumberInput} parser={parseNumberInput} suffix="đ" style={{ width: "100%" }} />
+          </Form.Item>
+        </div>
+        <Form.Item label="Quy cách / ghi chú" name="packageRule">
+          <Input placeholder="Ví dụ: 30 cái / thùng, hàng khách hỏi mới..." />
+        </Form.Item>
+      </Form>
+    </Modal>
+    </>
   );
+}
+
+function formatMoney(value: number): string {
+  return `${Math.round(Number(value || 0)).toLocaleString("vi-VN")}đ`;
+}
+
+function formatNumberInput(value?: string | number): string {
+  if (value === undefined || value === null || value === "") return "";
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function parseNumberInput(value?: string): number {
+  return Number(String(value ?? "").replace(/[^\d.-]/g, "").replace(/\./g, "")) || 0;
 }
 
 function escapeHtml(value: string): string {
