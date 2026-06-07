@@ -1,20 +1,34 @@
 "use client";
 
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SaveOutlined, UploadOutlined } from "@ant-design/icons";
-import { App, Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, Upload } from "antd";
+import { App, Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Typography, Upload } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { ColumnVisibilityDropdown, type ColumnVisibilityOption } from "@/components/ColumnVisibilityDropdown";
 import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { TableOperationsBar } from "@/components/TableOperationsBar";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
-import { buildProductSearchText, buildVariantLabel } from "@/features/catalog/product-search-helpers";
+import { buildProductSearchText } from "@/features/catalog/product-search-helpers";
 import { normalizeSearchText } from "@/lib/normalize";
 import type { CsvRow } from "@/lib/csv";
 
 type ProductRow = CatalogProduct & { key: string };
 type ProductFormValues = ProductRow & { aliasesText: string; variantsText: string };
+type ProductColumnKey = "image" | "name" | "active" | "defaultPrice" | "distributorPrice" | "unit" | "weight" | "packageRule" | "actions";
+
+const productColumnOptions: ColumnVisibilityOption<ProductColumnKey>[] = [
+  { key: "image", label: "Ảnh" },
+  { key: "name", label: "Sản phẩm", required: true },
+  { key: "active", label: "Bán hàng", required: true },
+  { key: "defaultPrice", label: "Giá đại lý" },
+  { key: "distributorPrice", label: "Giá phân phối" },
+  { key: "unit", label: "Đơn vị" },
+  { key: "weight", label: "Kg/đơn vị" },
+  { key: "packageRule", label: "Quy cách" },
+  { key: "actions", label: "Thao tác", required: true }
+];
 
 export function ProductManagement() {
   const { message } = App.useApp();
@@ -26,6 +40,7 @@ export function ProductManagement() {
   const [query, setQuery] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("active");
+  const [visibleColumns, setVisibleColumns] = useState<ProductColumnKey[]>(["image", "name", "active", "defaultPrice", "distributorPrice", "unit", "packageRule", "actions"]);
   const [form] = Form.useForm<ProductFormValues>();
 
   useEffect(() => {
@@ -60,13 +75,15 @@ export function ProductManagement() {
   const columns: ColumnsType<ProductRow> = useMemo(
     () => [
       {
+        key: "image",
         title: "Ảnh",
         dataIndex: "imageUrl",
         width: 72,
         render: (value?: string) => value ? <Image src={value} alt="Ảnh sản phẩm" width={44} height={44} style={{ objectFit: "cover", borderRadius: 6 }} /> : <div className="image-placeholder">Ảnh</div>
       },
-      { title: "Sản phẩm", dataIndex: "name", fixed: "left", width: 260 },
+      { key: "name", title: "Sản phẩm", dataIndex: "name", fixed: "left", width: 260 },
       {
+        key: "active",
         title: "Bán hàng",
         dataIndex: "isActive",
         width: 150,
@@ -80,23 +97,13 @@ export function ProductManagement() {
           />
         )
       },
-      { title: "Giá đại lý", dataIndex: "defaultPrice", align: "right", width: 120, render: (value) => `${Number(value).toLocaleString("vi-VN")}đ` },
-      { title: "Giá phân phối", dataIndex: "distributorPrice", align: "right", width: 130, render: (value) => value == null ? "-" : `${Number(value).toLocaleString("vi-VN")}đ` },
-      { title: "Đơn vị", dataIndex: "unit", width: 90 },
-      { title: "Kg/đơn vị", dataIndex: "weightPerUnitKg", align: "right", width: 110 },
-      { title: "Quy cách", dataIndex: "packageRule", render: (value) => value ?? "-" },
+      { key: "defaultPrice", title: "Giá đại lý", dataIndex: "defaultPrice", align: "right", width: 120, render: (value) => `${Number(value).toLocaleString("vi-VN")}đ` },
+      { key: "distributorPrice", title: "Giá phân phối", dataIndex: "distributorPrice", align: "right", width: 130, render: (value) => value == null ? "-" : `${Number(value).toLocaleString("vi-VN")}đ` },
+      { key: "unit", title: "Đơn vị", dataIndex: "unit", width: 90 },
+      { key: "weight", title: "Kg/đơn vị", dataIndex: "weightPerUnitKg", align: "right", width: 110 },
+      { key: "packageRule", title: "Quy cách", dataIndex: "packageRule", render: (value) => value ?? "-" },
       {
-        title: "Phân loại keo",
-        dataIndex: "variants",
-        width: 520,
-        render: (_, row) => row.variants?.length ? <div className="product-variant-list">{buildVariantLabel(row).split(", ").map((variant) => <Tag key={variant}>{variant}</Tag>)}</div> : "-"
-      },
-      {
-        title: "Alias",
-        dataIndex: "aliases",
-        render: (aliases: ProductRow["aliases"]) => aliases.slice(0, 4).map((alias) => <Tag key={alias.value}>{alias.value}</Tag>)
-      },
-      {
+        key: "actions",
         title: "Thao tác",
         width: 180,
         render: (_, row) => (
@@ -115,6 +122,10 @@ export function ProductManagement() {
     ],
     []
   );
+  const tableColumns = useMemo(() => {
+    const visible = new Set(visibleColumns);
+    return columns.filter((column) => column.key && visible.has(column.key as ProductColumnKey));
+  }, [columns, visibleColumns]);
 
   async function loadProducts() {
     setLoading(true);
@@ -149,12 +160,12 @@ export function ProductManagement() {
       imageUrl,
       isActive: values.isActive !== false,
       weightPerUnitKg: Number(values.weightPerUnitKg ?? 0),
-      aliases: String(values.aliasesText ?? "")
+      aliases: (values.aliasesText == null ? editing?.aliases ?? [] : String(values.aliasesText)
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean)
-        .map((value) => ({ value })),
-      variants: parseVariantsText(values.variantsText)
+        .map((value) => ({ value }))),
+      variants: values.variantsText == null ? editing?.variants ?? [] : parseVariantsText(values.variantsText)
     };
     const response = await fetch("/api/products", {
       method: "POST",
@@ -243,7 +254,7 @@ export function ProductManagement() {
         onPageSizeChange={setPageSize}
         searchValue={query}
         onSearchChange={setQuery}
-        searchPlaceholder="Tìm sản phẩm, alias, B14, CAT14..."
+        searchPlaceholder="Tìm sản phẩm, mã B14, CAT14..."
         filters={[
           { key: "active", label: "Bán hàng", value: activeFilter, defaultValue: "active", onChange: (value) => setActiveFilter(String(value)), options: [{ value: "active", label: "Đang bán" }, { value: "hidden", label: "Đã ẩn" }, { value: "all", label: "Tất cả" }] },
           { key: "unit", label: "Đơn vị", value: unitFilter, defaultValue: "all", onChange: (value) => setUnitFilter(String(value)), showSearch: true, options: [{ value: "all", label: "Tất cả" }, ...unitOptions.map((value) => ({ value, label: value }))] }
@@ -253,6 +264,7 @@ export function ProductManagement() {
         actions={(
           <>
             <Button icon={<ReloadOutlined />} onClick={loadProducts}>Tải lại</Button>
+            <ColumnVisibilityDropdown options={productColumnOptions} value={visibleColumns} onChange={setVisibleColumns} />
             <ImportExportButtons filename="san-pham-kegach.csv" rows={exportRows} onImport={importProducts} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
               Thêm sản phẩm
@@ -260,7 +272,7 @@ export function ProductManagement() {
           </>
         )}
       />
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length, setPageSize)} scroll={{ x: 1800, y: 620 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={tableColumns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length, setPageSize)} scroll={{ x: 1180, y: 620 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm sản phẩm"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveProduct} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Ảnh sản phẩm">
@@ -282,10 +294,6 @@ export function ProductManagement() {
           <Form.Item label="Khối lượng ước tính / đơn vị" name="weightPerUnitKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
           <Form.Item label="Quy cách" name="packageRule"><Input /></Form.Item>
           <Form.Item label="Mô tả sản phẩm" name="description"><Input.TextArea rows={3} /></Form.Item>
-          <Form.Item label="Alias, cách nhau bằng dấu phẩy" name="aliasesText"><Input.TextArea rows={3} /></Form.Item>
-          <Form.Item label="Phân loại keo, mỗi dòng: mã số thùng + số tuýp" name="variantsText">
-            <Input.TextArea rows={8} placeholder={"02 8tuyp\n04 26thung+9tuyp\nB14 50thung+29tuyp"} />
-          </Form.Item>
         </Form>
       </Modal>
     </div>

@@ -56,7 +56,7 @@ function KanbanOrderCardContent({ order }: { order: KanbanOrder }) {
         <Typography.Text strong>{order.kiotInvoiceCode}</Typography.Text>
         <Space size={4} wrap>
           {isDraft ? <Tag color="default">Nháp</Tag> : null}
-          <Tag color={isCod ? "volcano" : "geekblue"}>{isCod ? "COD" : "Đơn thường"}</Tag>
+          {isCod ? <Tag color="volcano">COD</Tag> : null}
         </Space>
       </div>
       <Typography.Text>{order.customer}</Typography.Text>
@@ -69,12 +69,7 @@ function KanbanOrderCardContent({ order }: { order: KanbanOrder }) {
           <div><span>Cước</span><b>{order.freightPayer === "company" ? "Cơ sở trả" : "Khách trả"}</b></div>
           <Tag color={codSent ? "green" : "red"}>{codSent ? "Đã in/gửi COD" : "Chưa in/gửi COD"}</Tag>
         </div>
-      ) : (
-        <div className="kanban-regular-panel">
-          <span>Thanh toán</span>
-          <b>{order.paymentStatus === "paid" ? "Đã thanh toán" : "Công nợ/chưa trả"}</b>
-        </div>
-      )}
+      ) : null}
       <div className="card-line">
         <span>{order.province}</span>
         <b>{order.total.toLocaleString("vi-VN")}đ</b>
@@ -83,6 +78,7 @@ function KanbanOrderCardContent({ order }: { order: KanbanOrder }) {
         <span>{order.sendDate}</span>
         <span>{order.driver ?? "Chưa gán xe"}</span>
       </div>
+      {!isCod ? <Tag color={order.paymentStatus === "paid" ? "green" : "gold"}>{order.paymentStatus === "paid" ? "Đã thanh toán" : "Công nợ"}</Tag> : null}
       {order.warnings.map((warning) => (
         <Tag key={warning} color="gold" icon={<WarningOutlined />} style={{ marginTop: 6 }}>
           {warning}

@@ -4,6 +4,7 @@ import { EditOutlined, ReloadOutlined, SaveOutlined } from "@ant-design/icons";
 import { App, Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { ColumnVisibilityDropdown, type ColumnVisibilityOption } from "@/components/ColumnVisibilityDropdown";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import { TableOperationsBar } from "@/components/TableOperationsBar";
@@ -23,6 +24,18 @@ type InventoryRow = {
   lastMovement: string;
   available: number;
 };
+type InventoryColumnKey = "product" | "active" | "onHand" | "reserved" | "available" | "threshold" | "lastMovement" | "actions";
+
+const inventoryColumnOptions: ColumnVisibilityOption<InventoryColumnKey>[] = [
+  { key: "product", label: "Sản phẩm", required: true },
+  { key: "active", label: "Bán hàng" },
+  { key: "onHand", label: "Tồn" },
+  { key: "reserved", label: "Đã giữ" },
+  { key: "available", label: "Khả dụng", required: true },
+  { key: "threshold", label: "Cảnh báo tồn thấp" },
+  { key: "lastMovement", label: "Biến động gần nhất" },
+  { key: "actions", label: "Thao tác", required: true }
+];
 
 const movementOptions = [
   { value: "purchase_in", label: "Nhập mua" },
@@ -44,6 +57,7 @@ export function InventoryTable() {
   const [query, setQuery] = useState("");
   const [stockFilter, setStockFilter] = useState<"all" | "low" | "reserved" | "out">("all");
   const [activeFilter, setActiveFilter] = useState<"active" | "hidden" | "all">("active");
+  const [visibleColumns, setVisibleColumns] = useState<InventoryColumnKey[]>(["product", "active", "onHand", "reserved", "available", "threshold", "actions"]);
   const [form] = Form.useForm<{ type: string; quantity: number; note: string }>();
   const movementType = Form.useWatch("type", form);
 
@@ -79,11 +93,12 @@ export function InventoryTable() {
 
   const columns: ColumnsType<InventoryRow> = useMemo(
     () => [
-      { title: "Sản phẩm", dataIndex: "product", fixed: "left", width: 260 },
-      { title: "Bán hàng", dataIndex: "isActive", width: 110, render: (value) => value === false ? <Tag color="default">Đã ẩn</Tag> : <Tag color="green">Đang bán</Tag> },
-      { title: "Tồn", dataIndex: "onHand", align: "right", width: 90 },
-      { title: "Đã giữ", dataIndex: "reserved", align: "right", width: 90 },
+      { key: "product", title: "Sản phẩm", dataIndex: "product", fixed: "left", width: 260 },
+      { key: "active", title: "Bán hàng", dataIndex: "isActive", width: 110, render: (value) => value === false ? <Tag color="default">Đã ẩn</Tag> : <Tag color="green">Đang bán</Tag> },
+      { key: "onHand", title: "Tồn", dataIndex: "onHand", align: "right", width: 90 },
+      { key: "reserved", title: "Đã giữ", dataIndex: "reserved", align: "right", width: 90 },
       {
+        key: "available",
         title: "Khả dụng",
         dataIndex: "available",
         align: "right",
@@ -91,13 +106,15 @@ export function InventoryTable() {
         render: (value, row) => <Tag color={value <= row.lowStockThreshold ? "red" : "green"}>{value} {row.unit}</Tag>
       },
       {
+        key: "threshold",
         title: "Cảnh báo tồn thấp",
         dataIndex: "lowStockThreshold",
         width: 250,
         render: (value, row) => <Progress percent={Math.min(100, Math.round((row.available / Math.max(1, value)) * 100))} size="small" status={row.available <= value ? "exception" : "normal"} />
       },
-      { title: "Biến động gần nhất", dataIndex: "lastMovement" },
+      { key: "lastMovement", title: "Biến động gần nhất", dataIndex: "lastMovement" },
       {
+        key: "actions",
         title: "Thao tác",
         width: 130,
         render: (_, row) => (
@@ -109,6 +126,10 @@ export function InventoryTable() {
     ],
     []
   );
+  const tableColumns = useMemo(() => {
+    const visible = new Set(visibleColumns);
+    return columns.filter((column) => column.key && visible.has(column.key as InventoryColumnKey));
+  }, [columns, visibleColumns]);
 
   async function loadInventory() {
     setLoading(true);
@@ -214,11 +235,12 @@ export function InventoryTable() {
         actions={(
           <>
             <Button icon={<ReloadOutlined />} onClick={loadInventory}>Tải lại</Button>
+            <ColumnVisibilityDropdown options={inventoryColumnOptions} value={visibleColumns} onChange={setVisibleColumns} />
             <ImportExportButtons filename="ton-kho-kegach.csv" rows={exportRows} onImport={importInventory} />
           </>
         )}
       />
-      <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={filteredRows} pagination={tablePagination(pageSize, filteredRows.length, setPageSize)} scroll={{ x: 1060 }} />
+      <Table rowKey="key" size="small" loading={loading} columns={tableColumns} dataSource={filteredRows} pagination={tablePagination(pageSize, filteredRows.length, setPageSize)} scroll={{ x: 1060 }} />
       <Modal title={`Điều chỉnh tồn: ${editing?.product ?? ""}`} open={!!editing} onCancel={() => setEditing(null)} onOk={saveAdjustment} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Loại biến động" name="type"><Select options={movementOptions} /></Form.Item>
