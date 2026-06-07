@@ -10,3 +10,4 @@ prisma/dev.db-journal
 *.tsbuildinfo
 tool_events.jsonl
 khachhang.json
+sanpham.json

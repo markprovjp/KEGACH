@@ -12,7 +12,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "import:customers": "tsx scripts/import-customers.ts"
+    "import:customers": "tsx scripts/import-customers.ts",
+    "import:products": "tsx scripts/import-products.ts"
   },
   "dependencies": {
     "@ant-design/cssinjs": "latest",
