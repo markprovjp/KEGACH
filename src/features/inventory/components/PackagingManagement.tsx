@@ -56,6 +56,7 @@ type PackagingMaterialRow = {
   rawRemainingKg: number;
   bagRemainingKg: number;
   finishedRemainingKg: number;
+  finishedRemainingPackageCount: number;
 };
 
 type PackagingFormValues = {
@@ -167,9 +168,12 @@ export function PackagingManagement() {
     { title: "Nhập túi bóng", dataIndex: "bagReceivedKg", align: "right", width: 130, render: formatKg },
     { title: "Rời đã dùng", dataIndex: "rawUsedKg", align: "right", width: 120, render: formatKg },
     { title: "Túi đã dùng", dataIndex: "bagUsedKg", align: "right", width: 120, render: formatKg },
+    { title: "Túi phải khớp", dataIndex: "expectedBagKg", align: "right", width: 120, render: formatKg },
     { title: "Đã đóng", dataIndex: "finishedKg", align: "right", width: 120, render: formatKg },
     { title: "Rời còn", dataIndex: "rawRemainingKg", align: "right", width: 110, render: formatKg },
     { title: "Túi còn", dataIndex: "bagRemainingKg", align: "right", width: 110, render: formatKg },
+    { title: "Thành phẩm còn", dataIndex: "finishedRemainingKg", align: "right", width: 135, render: formatKg },
+    { title: "Còn quy đổi", dataIndex: "finishedRemainingPackageCount", align: "right", width: 120, render: (value) => `${formatNumber(Number(value))} bao` },
     {
       title: "Lệch túi",
       dataIndex: "varianceKg",
@@ -303,6 +307,19 @@ export function PackagingManagement() {
         </Space>
       </Form>
       <div className="packaging-audit-block">
+        <div className="section-toolbar">
+          <div>
+            <b>Đối chiếu cuối năm theo từng loại</b>
+            <div className="muted">Nhập kho chỉ tính biến động nhập thật. Điều chỉnh tay không được tính là nhập hàng rời/túi bóng.</div>
+          </div>
+        </div>
+        <Alert
+          type="info"
+          showIcon
+          title="Công thức kiểm túi bóng"
+          description="Túi phải khớp = kg thành phẩm đã đóng - kg hàng rời đã dùng. Nếu lệch túi khác 0 thì phải kiểm lại nhập kho, xuất đóng gói hoặc tồn thực tế."
+          style={{ marginBottom: 12 }}
+        />
         <TableOperationsBar
           total={data.materialRows.length}
           pageSize="all"

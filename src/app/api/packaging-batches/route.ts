@@ -50,6 +50,7 @@ export async function GET() {
         rawRemainingKg: rawProduct ? calculateOnHand(rawProduct.inventoryMovement) : 0,
         bagRemainingKg: bagProduct ? calculateOnHand(bagProduct.inventoryMovement) : 0,
         finishedRemainingKg: finishedProduct ? calculateOnHand(finishedProduct.inventoryMovement) : 0,
+        finishedRemainingPackageCount: finishedProduct ? roundKg(calculateOnHand(finishedProduct.inventoryMovement) / rule.packageKg) : 0,
         ...itemReconciliation
       };
     }),
@@ -84,7 +85,6 @@ function groupBatchesByFinishedProductId(batches: Awaited<ReturnType<typeof pris
 function calculateReceivedKg(movements: Array<{ type: string; quantity: number }>): number {
   return roundKg(movements.reduce((total, movement) => {
     if (movement.type === "purchase_in" || movement.type === "return_in") return total + movement.quantity;
-    if (movement.type === "manual_adjustment" && movement.quantity > 0) return total + movement.quantity;
     return total;
   }, 0));
 }
