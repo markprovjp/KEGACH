@@ -14,6 +14,7 @@ describe("business sample data", () => {
     expect(sampleProducts.map((product) => product.name)).toContain("Súng điện full bộ");
     expect(sampleProducts.filter((product) => product.name.includes(" rời") && ["kg"].includes(product.unit))).toHaveLength(5);
     expect(sampleProducts.filter((product) => product.name.startsWith("Túi bóng"))).toHaveLength(5);
+    expect(sampleProducts.filter((product) => product.name.startsWith("Ke chữ thập")).every((product) => product.unit === "kg")).toBe(true);
     expect(sampleProducts.find((product) => product.id === "ke-vit-xoay-1-5mm")?.packageRule).toBe("60 túi / thùng - 1 túi 50 cái");
   });
 

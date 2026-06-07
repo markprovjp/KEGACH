@@ -133,7 +133,7 @@ export function ReconciliationTable() {
         <PageSizeControl total={rows.length} value={pageSize} onChange={setPageSize} />
         <Button onClick={loadRows}>Tải lại</Button>
       </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={rows} pagination={tablePagination(pageSize, rows.length)} scroll={{ x: 1280 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={rows} pagination={tablePagination(pageSize, rows.length, setPageSize)} scroll={{ x: 1280 }} />
       <Modal title={mode === "resolve" ? `Xử lý ${editing?.kiotInvoiceCode ?? ""}` : editing?.id ? `Sửa ${editing.kiotInvoiceCode}` : "Thêm dòng đối soát"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveRow} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }} width={680}>
         <Form form={form} layout="vertical">
           <div className="form-grid">

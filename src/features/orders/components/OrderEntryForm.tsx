@@ -236,7 +236,7 @@ export function OrderEntryForm() {
                     <Button icon={<PlusOutlined />} onClick={addLine}>Thêm dòng</Button>
                     <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
                   </div>
-                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length)} columns={columns} dataSource={lines} />
+                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length, setLinePageSize)} columns={columns} dataSource={lines} />
                 </>
               )
             },

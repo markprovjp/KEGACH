@@ -158,7 +158,7 @@ export function PackagingManagement() {
         <Statistic title="Hàng rời đã dùng" value={data.reconciliation.rawUsedKg} suffix="kg" />
         <Statistic title="Túi bóng đã dùng" value={data.reconciliation.bagUsedKg} suffix="kg" />
         <Statistic title="Thành phẩm đã đóng" value={data.reconciliation.finishedKg} suffix="kg" />
-        <Statistic title="Lệch cần kiểm" value={data.reconciliation.varianceKg} suffix="kg" valueStyle={{ color: Math.abs(data.reconciliation.varianceKg) > 0.001 ? "#cf1322" : "#3f8600" }} />
+        <Statistic title="Lệch cần kiểm" value={data.reconciliation.varianceKg} suffix="kg" styles={{ content: { color: Math.abs(data.reconciliation.varianceKg) > 0.001 ? "#cf1322" : "#3f8600" } }} />
       </div>
       <Form form={form} layout="vertical" className="packaging-form">
         <div className="form-grid compact-form-grid">
@@ -179,7 +179,7 @@ export function PackagingManagement() {
         <b>Lịch sử đóng gói</b>
         <PageSizeControl total={data.batches.length} value={pageSize} onChange={setPageSize} />
       </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={data.batches} pagination={tablePagination(pageSize, data.batches.length)} scroll={{ x: 900 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={data.batches} pagination={tablePagination(pageSize, data.batches.length, setPageSize)} scroll={{ x: 900 }} />
     </div>
   );
 }

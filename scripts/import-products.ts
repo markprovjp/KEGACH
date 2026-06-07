@@ -127,7 +127,7 @@ function inferUnit(product: KiotProduct): string {
   const name = normalizeSearchText(product.Name || "");
   const compact = compactAlias(name);
   if (/^(b|cat)\d{1,2}$/.test(compact)) return "tuýp";
-  if (name.includes("ke can bang") || name === "nem" || name.startsWith("nem ")) return "kg";
+  if (name.includes("ke can bang") || name.includes("ke chu thap") || name === "nem" || name.startsWith("nem ")) return "kg";
   if (name.includes("kim") || name.includes("kich") || name.includes("sung") || name.includes("rach") || name.includes("sui")) return "cái";
   if (name.includes("biron")) return "bộ";
   return "cái";
@@ -137,7 +137,7 @@ function inferPackageRule(product: KiotProduct): string | null {
   const name = normalizeSearchText(product.Name || "");
   const compact = compactAlias(name);
   if (/^(b|cat)\d{1,2}$/.test(compact)) return "30 cái / thùng";
-  if (name.includes("ke can bang") || name === "nem" || name.startsWith("nem ")) return "30 kg / bao";
+  if (name.includes("ke can bang") || name.includes("ke chu thap") || name === "nem" || name.startsWith("nem ")) return "30 kg / bao";
   return null;
 }
 

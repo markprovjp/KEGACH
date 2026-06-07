@@ -160,7 +160,7 @@ export function ProductManagement() {
         </Space>
       </div>
       <PageSizeControl total={filteredProducts.length} value={pageSize} onChange={setPageSize} />
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length)} scroll={{ x: 1660, y: 620 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length, setPageSize)} scroll={{ x: 1660, y: 620 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm sản phẩm"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveProduct} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Ảnh sản phẩm">

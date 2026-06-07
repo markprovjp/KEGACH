@@ -114,7 +114,7 @@ export function DispatchBoard() {
         <span />
         <PageSizeControl total={filtered.length} value={pageSize} onChange={setPageSize} />
       </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filtered} pagination={tablePagination(pageSize, filtered.length)} scroll={{ x: 1000 }} />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filtered} pagination={tablePagination(pageSize, filtered.length, setPageSize)} scroll={{ x: 1000 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm nhà xe"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveCarrier} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">
           <Form.Item label="Tên nhà xe" name="name" rules={[{ required: true }]}><Input /></Form.Item>

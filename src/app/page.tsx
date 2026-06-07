@@ -61,7 +61,7 @@ export default function DashboardPage() {
         {mounted ? (
           <>
             <PageSizeControl total={orders.length} value={pageSize} onChange={setPageSize} />
-            <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={orders} pagination={tablePagination(pageSize, orders.length)} scroll={{ x: 900 }} />
+            <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={orders} pagination={tablePagination(pageSize, orders.length, setPageSize)} scroll={{ x: 900 }} />
           </>
         ) : <div className="table-fallback">Đang tải danh sách đơn...</div>}
       </Card>
