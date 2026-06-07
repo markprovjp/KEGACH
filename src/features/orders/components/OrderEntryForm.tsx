@@ -1,6 +1,6 @@
 "use client";
 
-import { FileTextOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { DeleteOutlined, FileTextOutlined, PlusOutlined, PrinterOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, Button, DatePicker, Form, Input, InputNumber, Segmented, Select, Space, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
@@ -55,6 +55,8 @@ type CarrierOption = {
   route: string;
 };
 
+type EntryMode = "invoice" | "ocr";
+
 const defaultInvoiceText = `HÓA ĐƠN BÁN HÀNG
 Số hóa đơn: HD004066
 Ngày 04 tháng 06 năm 2026
@@ -93,6 +95,7 @@ export function OrderEntryForm() {
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [rawText, setRawText] = useState(defaultInvoiceText);
+  const [entryMode, setEntryMode] = useState<EntryMode>("invoice");
   const [saving, setSaving] = useState(false);
   const [linePageSize, setLinePageSize] = useState<PageSizeValue>(10);
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
@@ -113,13 +116,71 @@ export function OrderEntryForm() {
     void loadProducts();
     void loadInventory();
     fetch("/api/carriers").then((response) => response.json()).then(setCarriers).catch(() => setCarriers([]));
+    setLines([{ key: crypto.randomUUID(), quantity: 1, unitPrice: 0 }]);
   }, []);
 
-  const columns: ColumnsType<Line> = [
+  const totalQuantity = lines.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0);
+  const totalAmount = lines.reduce((sum, line) => sum + Number(line.quantity ?? 0) * Number(line.unitPrice ?? 0), 0);
+
+  const invoiceColumns: ColumnsType<Line> = [
+    {
+      title: "STT",
+      width: 64,
+      align: "center",
+      render: (_value, _record, index) => index + 1
+    },
+    {
+      title: "Tên hàng",
+      dataIndex: "productId",
+      render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} />
+    },
+    {
+      title: "ĐVT",
+      width: 90,
+      render: (_, record) => products.find((product) => product.id === record.productId)?.unit ?? "-"
+    },
+    {
+      title: "Số lượng",
+      dataIndex: "quantity",
+      width: 130,
+      align: "right",
+      render: (_, record) => <InputNumber min={1} value={record.quantity} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1) })} style={{ width: "100%" }} />
+    },
+    {
+      title: "Đơn giá",
+      dataIndex: "unitPrice",
+      width: 150,
+      align: "right",
+      render: (_, record) => <InputNumber min={0} step={1000} value={record.unitPrice} onChange={(value) => updateLine(record.key, { unitPrice: Number(value ?? 0) })} style={{ width: "100%" }} />
+    },
+    {
+      title: "Thành tiền",
+      width: 150,
+      align: "right",
+      render: (_, record) => `${(record.quantity * record.unitPrice).toLocaleString("vi-VN")}đ`
+    },
+    {
+      title: "Tồn/thiếu",
+      width: 150,
+      render: (_, record) => {
+        const stock = record.productId ? stockByProductId.get(record.productId) : undefined;
+        const shortage = Math.max(0, record.quantity - (stock?.available ?? 0));
+        return shortage > 0 ? <Tag color="red">Thiếu {shortage.toLocaleString("vi-VN")} {stock?.unit}</Tag> : <Tag color="green">{stock ? `${stock.available.toLocaleString("vi-VN")} ${stock.unit}` : "Đủ"}</Tag>;
+      }
+    },
+    {
+      title: "",
+      width: 54,
+      align: "center",
+      render: (_, record) => <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeLine(record.key)} />
+    }
+  ];
+
+  const compactColumns: ColumnsType<Line> = [
     {
       title: "Sản phẩm",
       dataIndex: "productId",
-      render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => updateLine(record.key, { productId: value })} />
+      render: (_, record) => <ProductSearch products={products} value={record.productId} onChange={(value) => selectProductForLine(record, value)} />
     },
     {
       title: "SL",
@@ -168,8 +229,21 @@ export function OrderEntryForm() {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
   }
 
+  function selectProductForLine(line: Line, productId: string) {
+    const product = products.find((item) => item.id === productId);
+    updateLine(line.key, {
+      productId,
+      productName: product?.name,
+      unitPrice: product?.defaultPrice ?? line.unitPrice
+    });
+  }
+
   function addLine() {
     setLines((current) => [...current, { key: crypto.randomUUID(), quantity: 1, unitPrice: 0 }]);
+  }
+
+  function removeLine(key: string) {
+    setLines((current) => current.filter((line) => line.key !== key));
   }
 
   function applyKiotInvoice() {
@@ -201,6 +275,78 @@ export function OrderEntryForm() {
       estimatedWeightKg: estimateOrderWeightKg(parsed.lines, products)
     });
     message.success("Đã trích xuất hóa đơn Kiot vào đơn vận hành");
+  }
+
+  function printPackingSlip() {
+    if (!lines.length) {
+      message.warning("Chưa có dòng hàng để in phiếu soạn");
+      return;
+    }
+    const values = form.getFieldsValue();
+    const printWindow = window.open("", "_blank", "width=900,height=1100");
+    if (!printWindow) {
+      message.error("Trình duyệt đang chặn cửa sổ in");
+      return;
+    }
+    const rows = lines.map((line, index) => {
+      const product = products.find((item) => item.id === line.productId);
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(product?.name ?? line.productName ?? "")}</td>
+          <td>${escapeHtml(product?.unit ?? "")}</td>
+          <td>${line.quantity.toLocaleString("vi-VN")}</td>
+          <td></td>
+        </tr>
+      `;
+    }).join("");
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Phiếu soạn hàng</title>
+          <style>
+            body { font-family: "Times New Roman", serif; color: #111; margin: 28px; }
+            .header { text-align: center; font-weight: 700; line-height: 1.25; font-size: 20px; }
+            .title { text-align: center; font-size: 24px; font-weight: 700; margin: 22px 0 6px; }
+            .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 48px; font-size: 18px; margin: 20px 0; }
+            table { width: 100%; border-collapse: collapse; font-size: 18px; }
+            th, td { border: 1px solid #444; padding: 8px; }
+            th { font-weight: 700; }
+            td:nth-child(1), td:nth-child(3), td:nth-child(4), td:nth-child(5) { text-align: center; }
+            .footer { display: grid; grid-template-columns: 1fr 1fr; margin-top: 46px; text-align: center; font-size: 18px; }
+            .note { margin-top: 18px; white-space: pre-wrap; font-size: 16px; }
+            @media print { body { margin: 18mm; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            PHỤ KIỆN ỐP LÁT THANH HÓA<br />
+            CƠ SỞ SẢN XUẤT NHỰA: LONG HẢI PLASTIC<br />
+            Đ/C: Đông Lĩnh - Đông Sơn - Thanh Hóa<br />
+            Điện thoại: 0393.393.188 / Zalo: 0393.393.188
+          </div>
+          <div class="title">PHIẾU SOẠN HÀNG</div>
+          <div class="meta">
+            <div><b>Khách hàng:</b> ${escapeHtml(values.customerName ?? "")}</div>
+            <div><b>SĐT:</b> ${escapeHtml(values.customerPhone ?? "")}</div>
+            <div><b>Địa chỉ:</b> ${escapeHtml(values.customerAddress ?? "-")}</div>
+            <div><b>Nhà xe:</b> ${escapeHtml(values.carrierName ?? "-")}</div>
+            <div><b>Số kiện:</b> ${values.packageCount ?? ""}</div>
+            <div><b>Khối lượng:</b> ${values.estimatedWeightKg ?? ""} kg</div>
+          </div>
+          <table>
+            <thead><tr><th>STT</th><th>Tên hàng</th><th>ĐVT</th><th>Số lượng</th><th>Đã soạn</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="note"><b>Ghi chú:</b> ${escapeHtml(values.note ?? "")}</div>
+          <div class="footer"><div>Người soạn hàng</div><div>Người kiểm hàng</div></div>
+          <script>window.onload = () => { window.print(); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   async function saveOrder(nextOfficial = isOfficial) {
@@ -245,34 +391,78 @@ export function OrderEntryForm() {
           type="card"
           items={[
             {
-              key: "kiot",
-              label: "1. Kiot",
+              key: "entry",
+              label: "1. Nhập đơn",
               children: (
-                <div className="order-intake-grid">
-                  <Form.Item label="Paste hóa đơn Kiot / text OCR">
-                    <Input.TextArea value={rawText} onChange={(event) => setRawText(event.target.value)} rows={14} />
-                  </Form.Item>
-                  <div className="parse-panel parse-panel-sticky">
-                    <div className="card-line">
-                      <Typography.Text strong>Trích xuất hóa đơn Kiot</Typography.Text>
-                      <Button icon={<FileTextOutlined />} onClick={applyKiotInvoice}>Đưa vào đơn</Button>
-                    </div>
-                    <div className="order-facts">
-                      <span>Hóa đơn</span><b>{parsed.kiotInvoiceCode ?? "-"}</b>
-                      <span>Khách</span><b>{parsed.customerName ?? "-"} {parsed.customerPhone ? `- ${parsed.customerPhone}` : ""}</b>
-                      <span>Tổng</span><b>{(parsed.totalPayment ?? 0).toLocaleString("vi-VN")}đ</b>
-                      <span>Còn nợ</span><b>{(parsed.remainingDebt ?? 0).toLocaleString("vi-VN")}đ</b>
-                    </div>
-                    <div className="parse-lines">
-                      {parsed.lines.map((line) => (
-                        <div key={`${line.sku}-${line.rawName}`} className="card-line">
-                          <span>{line.productName}</span>
-                          <b>{line.quantity} x {line.unitPrice.toLocaleString("vi-VN")}đ</b>
+                <>
+                  <Segmented
+                    className="entry-mode-switch"
+                    value={entryMode}
+                    onChange={(value) => setEntryMode(value as EntryMode)}
+                    options={[
+                      { value: "invoice", label: "Nhập như hóa đơn" },
+                      { value: "ocr", label: "Paste OCR Kiot" }
+                    ]}
+                  />
+                  {entryMode === "ocr" ? (
+                    <div className="order-intake-grid">
+                      <Form.Item label="Paste hóa đơn Kiot / text OCR">
+                        <Input.TextArea value={rawText} onChange={(event) => setRawText(event.target.value)} rows={14} />
+                      </Form.Item>
+                      <div className="parse-panel parse-panel-sticky">
+                        <div className="card-line">
+                          <Typography.Text strong>Trích xuất hóa đơn Kiot</Typography.Text>
+                          <Button icon={<FileTextOutlined />} onClick={applyKiotInvoice}>Đưa vào đơn</Button>
                         </div>
-                      ))}
+                        <div className="order-facts">
+                          <span>Hóa đơn</span><b>{parsed.kiotInvoiceCode ?? "-"}</b>
+                          <span>Khách</span><b>{parsed.customerName ?? "-"} {parsed.customerPhone ? `- ${parsed.customerPhone}` : ""}</b>
+                          <span>Tổng</span><b>{(parsed.totalPayment ?? 0).toLocaleString("vi-VN")}đ</b>
+                          <span>Còn nợ</span><b>{(parsed.remainingDebt ?? 0).toLocaleString("vi-VN")}đ</b>
+                        </div>
+                        <div className="parse-lines">
+                          {parsed.lines.map((line) => (
+                            <div key={`${line.sku}-${line.rawName}`} className="card-line">
+                              <span>{line.productName}</span>
+                              <b>{line.quantity} x {line.unitPrice.toLocaleString("vi-VN")}đ</b>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  ) : (
+                    <div className="manual-invoice">
+                      <div className="manual-invoice-header">
+                        <b>PHỤ KIỆN ỐP LÁT THANH HÓA</b>
+                        <span>CƠ SỞ SẢN XUẤT NHỰA: LONG HẢI PLASTIC</span>
+                        <span>Đ/C: Đông Lĩnh - Đông Sơn - Thanh Hóa</span>
+                        <span>Điện thoại: 0393.393.188 / Zalo: 0393.393.188</span>
+                      </div>
+                      <div className="manual-invoice-title">{isOfficial ? "HÓA ĐƠN BÁN HÀNG" : "ĐƠN NHÁP BÁN HÀNG"}</div>
+                      <div className="manual-invoice-meta">
+                        <Form.Item label="Số hóa đơn" name="kiotInvoiceCode"><Input placeholder={isOfficial ? "HD004102" : "Tự sinh khi lưu nháp"} /></Form.Item>
+                        <Form.Item label="Kênh nhận đơn" name="sourceChannel">
+                          <Select options={[{ value: "kiot_print", label: "In từ Kiot Việt" }, { value: "zalo", label: "Zalo" }, { value: "facebook", label: "Facebook" }, { value: "phone", label: "Điện thoại" }, { value: "counter", label: "Tại quầy" }]} />
+                        </Form.Item>
+                        <Form.Item label="Khách hàng" name="customerName"><Input /></Form.Item>
+                        <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
+                        <Form.Item label="Địa chỉ" name="customerAddress"><Input /></Form.Item>
+                        <Form.Item label="Loại đơn" name="orderType">
+                          <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
+                        </Form.Item>
+                      </div>
+                      <div className="table-toolbar">
+                        <Button icon={<PlusOutlined />} onClick={addLine}>Thêm sản phẩm</Button>
+                        <Tag color={stockWarnings.length ? "red" : "green"}>{stockWarnings.length ? `Thiếu ${stockWarnings.length} dòng` : "Đủ tồn"}</Tag>
+                      </div>
+                      <Table rowKey="key" size="small" pagination={false} columns={invoiceColumns} dataSource={lines} scroll={{ x: 980 }} />
+                      <div className="manual-invoice-total">
+                        <span>Tổng số lượng</span><b>{totalQuantity.toLocaleString("vi-VN")}</b>
+                        <span>Tổng thanh toán</span><b>{totalAmount.toLocaleString("vi-VN")}đ</b>
+                      </div>
+                    </div>
+                  )}
+                </>
               )
             },
             {
@@ -307,7 +497,7 @@ export function OrderEntryForm() {
                     <Button icon={<PlusOutlined />} onClick={addLine}>Thêm dòng</Button>
                     <PageSizeControl total={lines.length} value={linePageSize} onChange={setLinePageSize} />
                   </div>
-                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length, setLinePageSize)} columns={columns} dataSource={lines} scroll={{ x: 780 }} />
+                  <Table rowKey="key" size="small" pagination={tablePagination(linePageSize, lines.length, setLinePageSize)} columns={compactColumns} dataSource={lines} scroll={{ x: 780 }} />
                 </>
               )
             },
@@ -363,9 +553,18 @@ export function OrderEntryForm() {
         <Space>
           <Button icon={<SaveOutlined />} loading={saving} onClick={() => saveOrder(false)}>Lưu đơn nháp</Button>
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => saveOrder(true)}>Lưu đơn chính thức</Button>
-          <Button onClick={() => message.info("Đã tạo phiếu đóng hàng mẫu")}>In phiếu đóng hàng</Button>
+          <Button icon={<PrinterOutlined />} onClick={printPackingSlip}>In phiếu soạn hàng</Button>
         </Space>
       </div>
     </Form>
   );
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

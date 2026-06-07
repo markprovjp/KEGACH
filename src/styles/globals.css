@@ -87,6 +87,10 @@ a {
   min-width: 230px;
 }
 
+.entry-mode-switch {
+  margin-bottom: 12px;
+}
+
 .order-intake-grid {
   display: grid;
   grid-template-columns: minmax(320px, 1.15fr) minmax(300px, 0.85fr);
@@ -128,6 +132,56 @@ a {
   display: grid;
   gap: 8px;
   margin-top: 12px;
+}
+
+.manual-invoice {
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.manual-invoice-header {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+  font-family: "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.manual-invoice-header b {
+  font-size: 20px;
+}
+
+.manual-invoice-title {
+  margin: 14px 0;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.manual-invoice-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 10px 18px;
+}
+
+.manual-invoice-total {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(140px, auto);
+  gap: 8px 18px;
+  width: min(440px, 100%);
+  margin: 14px 0 0 auto;
+  font-size: 15px;
+}
+
+.manual-invoice-total span {
+  color: #667085;
+}
+
+.manual-invoice-total b {
+  text-align: right;
 }
 
 .compact-form-grid {
