@@ -4,6 +4,7 @@ import {
   AppstoreOutlined,
   AuditOutlined,
   CarOutlined,
+  ContactsOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   MoonOutlined,
@@ -22,6 +23,7 @@ type ThemeMode = "light" | "dark";
 const menuItems = [
   { key: "/", icon: <DashboardOutlined />, label: <Link href="/">Tổng quan</Link> },
   { key: "/orders/new", icon: <PlusCircleOutlined />, label: <Link href="/orders/new">Tạo đơn</Link> },
+  { key: "/customers", icon: <ContactsOutlined />, label: <Link href="/customers">Khách hàng</Link> },
   { key: "/board", icon: <AppstoreOutlined />, label: <Link href="/board">Kanban</Link> },
   { key: "/inventory", icon: <DatabaseOutlined />, label: <Link href="/inventory">Kho</Link> },
   { key: "/reconciliation", icon: <AuditOutlined />, label: <Link href="/reconciliation">Đối soát</Link> },

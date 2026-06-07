@@ -40,6 +40,7 @@ type OrderFormValues = {
   customerPhone?: string;
   customerAddress?: string;
   customerId?: string;
+  customerRelation?: "direct" | "intermediary";
   receiverName?: string;
   receiverPhone?: string;
   receiverAddress?: string;
@@ -70,6 +71,7 @@ type CustomerOption = {
   address?: string | null;
   province?: string | null;
   note?: string | null;
+  customerType?: string | null;
 };
 
 type EntryMode = "invoice" | "message" | "ocr";
@@ -134,7 +136,9 @@ export function OrderEntryForm() {
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
   const parsedMessage = useMemo(() => parseFreeformOrderText(messageText, products), [messageText, products]);
   const watchedValues = Form.useWatch([], form) ?? {};
+  const customerRelation = Form.useWatch("customerRelation", form) ?? "direct";
   const isOfficial = orderMode === "official";
+  const isIntermediary = customerRelation === "intermediary";
   const stockByProductId = useMemo(() => new Map(inventory.map((row) => [row.productId, row])), [inventory]);
   const stockWarnings = useMemo(() => lines
     .map((line) => {
@@ -296,12 +300,24 @@ export function OrderEntryForm() {
       form.setFieldValue("customerId", undefined);
       return;
     }
+    const relation = customer.customerType === "intermediary" ? "intermediary" : "direct";
     form.setFieldsValue({
       customerId: customer.id,
+      customerRelation: relation,
       customerName: customer.name,
       customerPhone: customer.phone ?? undefined,
-      customerAddress: customer.address ?? undefined
+      customerAddress: customer.address ?? undefined,
+      receiverName: relation === "direct" ? undefined : form.getFieldValue("receiverName"),
+      receiverPhone: relation === "direct" ? undefined : form.getFieldValue("receiverPhone"),
+      receiverAddress: relation === "direct" ? undefined : form.getFieldValue("receiverAddress")
     });
+  }
+
+  function updateCustomerRelation(value: "direct" | "intermediary") {
+    form.setFieldValue("customerRelation", value);
+    if (value === "direct") {
+      form.setFieldsValue({ receiverName: undefined, receiverPhone: undefined, receiverAddress: undefined });
+    }
   }
 
   function addLine() {
@@ -484,7 +500,14 @@ export function OrderEntryForm() {
   }
 
   async function saveOrder(nextOfficial = isOfficial) {
-    const values = { ...form.getFieldsValue(), isOfficial: nextOfficial };
+    const rawValues = form.getFieldsValue();
+    const values = {
+      ...rawValues,
+      isOfficial: nextOfficial,
+      receiverName: rawValues.customerRelation === "intermediary" ? rawValues.receiverName : undefined,
+      receiverPhone: rawValues.customerRelation === "intermediary" ? rawValues.receiverPhone : undefined,
+      receiverAddress: rawValues.customerRelation === "intermediary" ? rawValues.receiverAddress : undefined
+    };
     form.setFieldValue("isOfficial", nextOfficial);
     setOrderMode(nextOfficial ? "official" : "draft");
     setSaving(true);
@@ -506,7 +529,7 @@ export function OrderEntryForm() {
 
   return (
     <>
-    <Form form={form} layout="vertical" className="order-form" initialValues={{ sourceChannel: "kiot_print", orderType: "online", isOfficial: false, paymentKind: "debt", paymentStatus: "unpaid", deliveryMode: "truck_share", freightPayer: "customer", workflowChecks: [] }}>
+    <Form form={form} layout="vertical" className="order-form" initialValues={{ sourceChannel: "kiot_print", orderType: "online", isOfficial: false, customerRelation: "direct", paymentKind: "debt", paymentStatus: "unpaid", deliveryMode: "truck_share", freightPayer: "customer", workflowChecks: [] }}>
       <div className="order-mode-panel">
         <div>
           <Typography.Text strong>Chế độ lên đơn</Typography.Text>
@@ -612,9 +635,14 @@ export function OrderEntryForm() {
                           <Form.Item label="Khách hàng" name="customerName"><Input /></Form.Item>
                           <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
                           <Form.Item label="Địa chỉ" name="customerAddress"><Input /></Form.Item>
-                          <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Nếu khách trung gian đặt hộ" /></Form.Item>
-                          <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
-                          <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
+                          <Form.Item label="Quan hệ khách" name="customerRelation"><Segmented block options={[{ value: "direct", label: "Lấy thẳng" }, { value: "intermediary", label: "Trung gian" }]} onChange={(value) => updateCustomerRelation(value as "direct" | "intermediary")} /></Form.Item>
+                          {isIntermediary ? (
+                            <>
+                              <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Tên khách cuối / công trình" /></Form.Item>
+                              <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
+                              <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
+                            </>
+                          ) : null}
                           <Form.Item label="Loại đơn" name="orderType">
                             <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
                           </Form.Item>
@@ -625,9 +653,14 @@ export function OrderEntryForm() {
                           <Form.Item label="Khách mới / tên khách" name="customerName"><Input placeholder="Tên khách / đại lý / thợ" /></Form.Item>
                           <Form.Item label="SĐT" name="customerPhone"><Input placeholder="Số điện thoại nếu có" /></Form.Item>
                           <Form.Item label="Địa chỉ / tuyến gửi" name="customerAddress"><Input placeholder="Địa chỉ, tỉnh, nhà xe khách muốn gửi..." /></Form.Item>
-                          <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Nếu người đặt là trung gian" /></Form.Item>
-                          <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
-                          <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
+                          <Form.Item label="Quan hệ khách" name="customerRelation"><Segmented block options={[{ value: "direct", label: "Lấy thẳng" }, { value: "intermediary", label: "Trung gian" }]} onChange={(value) => updateCustomerRelation(value as "direct" | "intermediary")} /></Form.Item>
+                          {isIntermediary ? (
+                            <>
+                              <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Tên khách cuối / công trình" /></Form.Item>
+                              <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
+                              <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
+                            </>
+                          ) : null}
                           <Form.Item label="Ghi chú nháp" name="note"><Input placeholder="Ví dụ: khách chưa chốt, hỏi thêm hàng, thiếu hàng cần nhập..." /></Form.Item>
                         </div>
                       )}
@@ -667,9 +700,14 @@ export function OrderEntryForm() {
                   <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
                   <Form.Item label="SĐT" name="customerPhone"><Input /></Form.Item>
                   <Form.Item label="Địa chỉ giao/COD" name="customerAddress"><Input /></Form.Item>
-                  <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Nếu khách đặt hộ người khác" /></Form.Item>
-                  <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
-                  <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
+                  <Form.Item label="Quan hệ khách" name="customerRelation"><Segmented block options={[{ value: "direct", label: "Lấy thẳng" }, { value: "intermediary", label: "Trung gian" }]} onChange={(value) => updateCustomerRelation(value as "direct" | "intermediary")} /></Form.Item>
+                  {isIntermediary ? (
+                    <>
+                      <Form.Item label="Người nhận cuối" name="receiverName"><Input placeholder="Tên khách cuối / công trình" /></Form.Item>
+                      <Form.Item label="SĐT người nhận" name="receiverPhone"><Input /></Form.Item>
+                      <Form.Item label="Địa chỉ người nhận" name="receiverAddress"><Input /></Form.Item>
+                    </>
+                  ) : null}
                   <Form.Item label="Ngày hẹn gửi" name="promisedSendDate"><DatePicker style={{ width: "100%" }} /></Form.Item>
                 </div>
               )

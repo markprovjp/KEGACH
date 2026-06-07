@@ -11,6 +11,7 @@ type CustomerOption = {
   address?: string | null;
   province?: string | null;
   note?: string | null;
+  customerType?: string | null;
 };
 
 export function CustomerSearch({ value, onChange, onSelectCustomer }: { value?: string; onChange?: (value?: string) => void; onSelectCustomer?: (customer?: CustomerOption) => void }) {
@@ -48,7 +49,7 @@ export function CustomerSearch({ value, onChange, onSelectCustomer }: { value?: 
         optionFilterProp="label"
         placeholder="Chọn khách hàng"
         notFoundContent={searchText ? "Không thấy khách phù hợp" : "Gõ tên hoặc SĐT để tìm khách"}
-        options={visibleCustomers.map((item) => ({ value: item.id, label: `${item.name}${item.phone ? ` - ${item.phone}` : ""}` }))}
+        options={visibleCustomers.map((item) => ({ value: item.id, label: `${item.name}${item.phone ? ` - ${item.phone}` : ""}${item.customerType === "intermediary" ? " - Trung gian" : ""}` }))}
       />
       {customer?.note ? <Typography.Text type="secondary">{customer.note}</Typography.Text> : null}
     </div>

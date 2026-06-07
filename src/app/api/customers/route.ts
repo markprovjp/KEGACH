@@ -32,7 +32,9 @@ export async function POST(request: Request) {
       phone: body.phone || null,
       address: body.address || null,
       province: body.province || null,
-      note: body.note || null
+      note: body.note || null,
+      customerType: body.customerType || null,
+      groups: body.groups || null
     },
     create: {
       id,
@@ -40,7 +42,9 @@ export async function POST(request: Request) {
       phone: body.phone || null,
       address: body.address || null,
       province: body.province || null,
-      note: body.note || null
+      note: body.note || null,
+      customerType: body.customerType || null,
+      groups: body.groups || null
     }
   });
   return NextResponse.json(customer);
