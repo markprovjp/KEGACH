@@ -31,6 +31,11 @@ export type KanbanOrder = {
   note?: string;
   workflowChecks?: string[];
   workflowMissing?: string[];
+  nextAction?: {
+    title: string;
+    phase: string;
+    severity: "blocked" | "todo" | "done";
+  };
 };
 
 export type KanbanColumnDefinition = {

@@ -32,10 +32,13 @@ export function KanbanOrderCard({ order, onEdit, onDelete, compact }: { order: K
           {warning}
         </Tag>
       ))}
-      {order.workflowMissing?.length ? (
-        <Tag color="red" icon={<WarningOutlined />} style={{ marginTop: 6 }}>
-          Thiếu {order.workflowMissing.length} bước quy trình
-        </Tag>
+      {order.nextAction && order.nextAction.severity !== "done" ? (
+        <div className={`kanban-next-action ${order.nextAction.severity}`}>
+          <span>{order.nextAction.severity === "blocked" ? "Bắt buộc" : order.nextAction.phase}</span>
+          <b>{order.nextAction.title}</b>
+        </div>
+      ) : order.workflowMissing?.length ? (
+        <Tag color="red" icon={<WarningOutlined />} style={{ marginTop: 6 }}>Thiếu {order.workflowMissing.length} bước quy trình</Tag>
       ) : (
         <Tag color="green" style={{ marginTop: 6 }}>Đủ checklist</Tag>
       )}

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import type { OrderStatus } from "@/features/orders/order-status";
-import { canMoveToStatus, getWorkflowMissing, normalizeWorkflowChecks } from "@/features/orders/order-workflow";
+import { canMoveToStatus, getWorkflowMissing, getWorkflowNextAction, normalizeWorkflowChecks } from "@/features/orders/order-workflow";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -168,6 +168,25 @@ function toOrderRow(order: OrderWithRelations) {
     note: order.note ?? undefined,
     workflowChecks: normalizeWorkflowChecks(order.workflowChecks),
     workflowMissing: getWorkflowMissing({
+      status: order.status,
+      orderType: order.orderType,
+      isOfficial: order.isOfficial,
+      kiotInvoiceCode: order.kiotInvoiceCode,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerAddress: order.customerAddress,
+      receiverName: order.receiverName,
+      receiverPhone: order.receiverPhone,
+      receiverAddress: order.receiverAddress,
+      codAmount: order.codAmount,
+      paymentStatus: order.paymentStatus,
+      carrierName: order.shipments[0]?.carrierName,
+      deliveryMode: order.shipments[0]?.deliveryMode,
+      packageCount: order.shipments[0]?.packageCount,
+      estimatedWeightKg: order.shipments[0]?.estimatedWeightKg,
+      workflowChecks: order.workflowChecks
+    }),
+    nextAction: getWorkflowNextAction({
       status: order.status,
       orderType: order.orderType,
       isOfficial: order.isOfficial,

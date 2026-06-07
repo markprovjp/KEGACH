@@ -5,6 +5,7 @@ import {
   getWorkflowDataMissing,
   getWorkflowMissing,
   getWorkflowMissingKeys,
+  getWorkflowNextAction,
   getWorkflowPhaseState,
   getWorkflowRequiredKeys,
   normalizeWorkflowChecks,
@@ -23,6 +24,7 @@ export function WorkflowChecklist({ order, value, onChange }: { order: WorkflowO
   const dataMissing = getWorkflowDataMissing({ ...order, workflowChecks: checked });
   const missing = getWorkflowMissing({ ...order, workflowChecks: checked });
   const phaseState = getWorkflowPhaseState({ ...order, workflowChecks: checked });
+  const nextAction = getWorkflowNextAction({ ...order, workflowChecks: checked });
   const allKeys = Array.from(new Set<WorkflowCheckKey>([...required, ...checked]));
   const percent = required.length ? Math.round(((required.length - missingKeys.length) / required.length) * 100) : dataMissing.length ? 0 : 100;
   const firstMissingPhase = phaseState.findIndex((phase) => phase.required > 0 && phase.missing > 0);
@@ -50,7 +52,15 @@ export function WorkflowChecklist({ order, value, onChange }: { order: WorkflowO
           status: phase.required === 0 ? "wait" : phase.missing ? "process" : "finish"
         }))}
       />
-      {missing.length ? <Alert type="warning" showIcon title="Chưa đủ quy trình" description={missing.slice(0, 6).join(" • ")} style={{ margin: "8px 0" }} /> : null}
+      {missing.length ? (
+        <Alert
+          type={nextAction.severity === "blocked" ? "error" : "warning"}
+          showIcon
+          title={`Việc cần làm ngay: ${nextAction.title}`}
+          description={`Nhóm: ${nextAction.phase}. Các việc còn thiếu: ${missing.slice(0, 6).join(" • ")}`}
+          style={{ margin: "8px 0" }}
+        />
+      ) : null}
       <div className="workflow-phase-grid">
         {(Object.keys(workflowPhaseLabels) as WorkflowPhaseKey[]).map((phase) => {
           const phaseKeys = workflowPhaseChecks[phase].filter((key) => allKeys.includes(key));

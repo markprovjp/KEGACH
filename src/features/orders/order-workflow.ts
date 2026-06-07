@@ -98,6 +98,12 @@ export type WorkflowOrderInput = {
   workflowChecks?: unknown;
 };
 
+export type WorkflowNextAction = {
+  title: string;
+  phase: string;
+  severity: "blocked" | "todo" | "done";
+};
+
 export function normalizeWorkflowChecks(value: unknown): WorkflowCheckKey[] {
   if (!Array.isArray(value)) return [];
   return Array.from(new Set(value.filter((item): item is WorkflowCheckKey => typeof item === "string" && item in workflowCheckLabels)));
@@ -153,21 +159,21 @@ export function getWorkflowDataMissing(order: WorkflowOrderInput): string[] {
   const missing: string[] = [];
   const type = normalizeOrderType(order.orderType);
 
-  if (type === "online" && !order.kiotInvoiceCode && order.isOfficial) missing.unshift("Đơn online phải có hóa đơn Kiot");
+  if (type === "online" && !order.kiotInvoiceCode && order.isOfficial) missing.push("Đơn online phải có hóa đơn Kiot");
   if (type === "cod" && (order.isOfficial || order.status !== "draft")) {
     const nameForLabel = order.receiverName || order.customerName;
     const phoneForLabel = order.receiverPhone || order.customerPhone;
     const addressForLabel = order.receiverAddress || order.customerAddress;
-    if (!nameForLabel?.trim()) missing.unshift("COD thiếu tên người nhận");
-    if (!phoneForLabel?.trim() || phoneForLabel === "-") missing.unshift("COD thiếu SĐT người nhận");
-    if (!addressForLabel?.trim()) missing.unshift("COD thiếu địa chỉ người nhận");
-    if (!order.codAmount || order.codAmount <= 0) missing.unshift("COD thiếu tiền thu");
-    if (!order.packageCount || order.packageCount <= 0) missing.unshift("COD thiếu số kiện");
-    if (!order.estimatedWeightKg || order.estimatedWeightKg <= 0) missing.unshift("COD thiếu khối lượng");
+    if (!nameForLabel?.trim()) missing.push("COD thiếu tên người nhận");
+    if (!phoneForLabel?.trim() || phoneForLabel === "-") missing.push("COD thiếu SĐT người nhận");
+    if (!addressForLabel?.trim()) missing.push("COD thiếu địa chỉ người nhận");
+    if (!order.codAmount || order.codAmount <= 0) missing.push("COD thiếu tiền thu");
+    if (!order.packageCount || order.packageCount <= 0) missing.push("COD thiếu số kiện");
+    if (!order.estimatedWeightKg || order.estimatedWeightKg <= 0) missing.push("COD thiếu khối lượng");
   }
-  if (type === "truck_share" && !order.carrierName?.trim()) missing.unshift("Đơn ghép xe chưa chọn nhà xe");
-  if (order.isOfficial && !order.kiotInvoiceCode) missing.unshift("Đơn chính thức phải có hóa đơn Kiot");
-  if (order.paymentStatus === "paid" && !order.isOfficial) missing.unshift("Đã thanh toán thì phải lên đơn chính thức");
+  if (type === "truck_share" && !order.carrierName?.trim()) missing.push("Đơn ghép xe chưa chọn nhà xe");
+  if (order.isOfficial && !order.kiotInvoiceCode) missing.push("Đơn chính thức phải có hóa đơn Kiot");
+  if (order.paymentStatus === "paid" && !order.isOfficial) missing.push("Đã thanh toán thì phải lên đơn chính thức");
 
   return missing;
 }
@@ -177,6 +183,23 @@ export function getWorkflowMissing(order: WorkflowOrderInput): string[] {
     ...getWorkflowDataMissing(order),
     ...getWorkflowMissingKeys(order).map((key) => workflowCheckLabels[key])
   ];
+}
+
+export function getWorkflowNextAction(order: WorkflowOrderInput): WorkflowNextAction {
+  const dataMissing = getWorkflowDataMissing(order);
+  if (dataMissing.length > 0) {
+    return { title: dataMissing[0], phase: "Thông tin bắt buộc", severity: "blocked" };
+  }
+
+  const missingKey = getWorkflowMissingKeys(order)[0];
+  if (!missingKey) return { title: "Đủ quy trình hiện tại", phase: "Hoàn tất", severity: "done" };
+
+  const phase = (Object.keys(workflowPhaseChecks) as WorkflowPhaseKey[]).find((key) => workflowPhaseChecks[key].includes(missingKey));
+  return {
+    title: workflowCheckLabels[missingKey],
+    phase: phase ? workflowPhaseLabels[phase] : "Quy trình",
+    severity: "todo"
+  };
 }
 
 export function getWorkflowPhaseState(order: WorkflowOrderInput): Array<{ key: WorkflowPhaseKey; title: string; required: number; completed: number; missing: number }> {

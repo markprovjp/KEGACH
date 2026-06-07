@@ -606,6 +606,50 @@ a {
   text-overflow: ellipsis;
 }
 
+.kanban-next-action {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+  border: 1px solid #ffe58f;
+  border-radius: 6px;
+  background: #fffbe6;
+  padding: 7px 8px;
+}
+
+.kanban-next-action.blocked {
+  border-color: #ffccc7;
+  background: #fff2f0;
+}
+
+.kanban-next-action span {
+  color: #667085;
+  font-size: 12px;
+}
+
+.kanban-next-action b {
+  overflow-wrap: anywhere;
+}
+
+.must-do-list {
+  display: grid;
+  gap: 8px;
+}
+
+.must-do-item {
+  display: grid;
+  grid-template-columns: 100px minmax(110px, 1fr) minmax(180px, 1.8fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.must-do-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .static-card {
   border: 1px solid #e4e7ec;
   padding: 10px;
@@ -674,6 +718,20 @@ a {
 .theme-dark .order-action-bar {
   border-top-color: #263241;
   background: rgba(15, 23, 42, 0.94);
+}
+
+.theme-dark .kanban-next-action {
+  border-color: #7c5b12;
+  background: #2f260f;
+}
+
+.theme-dark .kanban-next-action.blocked {
+  border-color: #7f2a25;
+  background: #351715;
+}
+
+.theme-dark .kanban-next-action span {
+  color: #94a3b8;
 }
 
 @media (max-width: 760px) {

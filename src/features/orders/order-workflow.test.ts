@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canMoveToStatus, getWorkflowMissing, getWorkflowRequiredKeys } from "./order-workflow";
+import { canMoveToStatus, getWorkflowMissing, getWorkflowNextAction, getWorkflowRequiredKeys } from "./order-workflow";
 
 describe("order workflow", () => {
   it("blocks COD shipment when required delivery fields are missing", () => {
@@ -32,5 +32,19 @@ describe("order workflow", () => {
       "cod_label_complete",
       "print_slip_discarded"
     ]));
+  });
+
+  it("surfaces the next thing staff must not forget", () => {
+    expect(getWorkflowNextAction({ orderType: "cod", status: "packed", customerName: "Anh A", customerPhone: "0901", codAmount: 0 })).toEqual({
+      title: "COD thiếu địa chỉ người nhận",
+      phase: "Thông tin bắt buộc",
+      severity: "blocked"
+    });
+
+    expect(getWorkflowNextAction({ orderType: "truck_share", status: "kiot_linked", isOfficial: true, kiotInvoiceCode: "HD004066", carrierName: "Xe Hòa Phát" })).toEqual({
+      title: "Đã liên hệ nhà xe đúng tuyến",
+      phase: "Ghép xe",
+      severity: "todo"
+    });
   });
 });
