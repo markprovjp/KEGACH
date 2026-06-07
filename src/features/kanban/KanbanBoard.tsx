@@ -1,13 +1,16 @@
 "use client";
 
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { PrinterOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Drawer, Form, Input, InputNumber, Segmented, Select, Space, Switch, Tabs } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, limitRows, type PageSizeValue } from "@/components/PageSizeControl";
 import { canTransitionOrder, orderStatusLabels, orderStatuses } from "@/features/orders/order-status";
 import { orderTypeLabels, paymentStatusLabels } from "@/features/orders/order-workflow";
 import { WorkflowChecklist } from "@/features/orders/components/WorkflowChecklist";
+import { printCodHandoff } from "@/features/orders/print-documents";
 import { KanbanColumn } from "./KanbanColumn";
+import { KanbanOrderCardPreview } from "./KanbanOrderCard";
 import type { KanbanColumnDefinition, KanbanOrder } from "./kanban-types";
 
 type CarrierOption = { id: string; name: string; phone: string; route: string };
@@ -40,6 +43,7 @@ export function KanbanBoard() {
   const [columnSize, setColumnSize] = useState<PageSizeValue>(30);
   const [compactCards, setCompactCards] = useState(true);
   const [editing, setEditing] = useState<KanbanOrder | null>(null);
+  const [activeOrder, setActiveOrder] = useState<KanbanOrder | null>(null);
   const [mounted, setMounted] = useState(false);
   const [form] = Form.useForm<KanbanFormValues>();
   const watchedEdit = Form.useWatch([], form) ?? {};
@@ -78,7 +82,13 @@ export function KanbanBoard() {
     setOrders(await response.json());
   }
 
+  function onDragStart(event: DragStartEvent) {
+    const orderId = String(event.active.id);
+    setActiveOrder(orders.find((order) => order.id === orderId) ?? null);
+  }
+
   async function onDragEnd(event: DragEndEvent) {
+    setActiveOrder(null);
     const orderId = String(event.active.id);
     const nextStatus = event.over?.id;
     if (!nextStatus) return;
@@ -92,6 +102,10 @@ export function KanbanBoard() {
     }
 
     await saveOrder({ ...order, status: nextStatus as KanbanOrder["status"] }, false);
+  }
+
+  function onDragCancel() {
+    setActiveOrder(null);
   }
 
   function openEdit(order: KanbanOrder) {
@@ -134,6 +148,31 @@ export function KanbanBoard() {
     message.success("Đã xóa đơn hàng");
   }
 
+  function printCod(order: KanbanOrder) {
+    try {
+      printCodHandoff({
+        code: order.code,
+        kiotInvoiceCode: order.kiotInvoiceCode,
+        customerName: order.customer,
+        customerPhone: order.phone,
+        customerAddress: order.customerAddress,
+        receiverName: order.receiverName,
+        receiverPhone: order.receiverPhone,
+        receiverAddress: order.receiverAddress,
+        carrierName: order.carrierName,
+        driverName: order.driverName,
+        packageCount: order.packageCount,
+        estimatedWeightKg: order.estimatedWeightKg,
+        codAmount: order.codAmount,
+        freightPayer: order.freightPayer,
+        note: order.note,
+        productSummary: order.productSummary
+      });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "Không mở được cửa sổ in COD");
+    }
+  }
+
   function clearFilters() {
     setQuery("");
     setQuickFilter("all");
@@ -158,13 +197,14 @@ export function KanbanBoard() {
   }
 
   const board = (
-    <DndContext onDragEnd={onDragEnd}>
+    <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
       <div className="kanban-scroll">
         {visibleColumns.map((column) => {
           const columnOrders = grouped.get(column.status) ?? [];
-          return <KanbanColumn key={column.status} column={column} orders={limitRows(columnOrders, columnSize)} totalCount={columnOrders.length} onEdit={openEdit} onDelete={deleteOrder} compact={compactCards} />;
+          return <KanbanColumn key={column.status} column={column} orders={limitRows(columnOrders, columnSize)} totalCount={columnOrders.length} onEdit={openEdit} onDelete={deleteOrder} onPrintCod={printCod} compact={compactCards} />;
         })}
       </div>
+      <DragOverlay dropAnimation={null}>{activeOrder ? <KanbanOrderCardPreview order={activeOrder} compact={compactCards} /> : null}</DragOverlay>
     </DndContext>
   );
 
@@ -268,6 +308,7 @@ export function KanbanBoard() {
                     <Form.Item label="Tài xế / ghi chú giao" name="driverName"><Input /></Form.Item>
                     <Form.Item label="Số kiện" name="packageCount"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
                     <Form.Item label="Khối lượng ước tính" name="estimatedWeightKg"><InputNumber min={0} step={0.1} style={{ width: "100%" }} /></Form.Item>
+                    {watchedEdit.codAmount > 0 ? <Button icon={<PrinterOutlined />} onClick={() => editing && printCod({ ...editing, ...watchedEdit })}>In phiếu gửi COD</Button> : null}
                   </div>
                 )
               },

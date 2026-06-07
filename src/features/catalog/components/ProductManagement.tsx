@@ -6,10 +6,12 @@ import type { UploadFile } from "antd/es/upload/interface";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { TableOperationsBar } from "@/components/TableOperationsBar";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { buildProductSearchText, buildVariantLabel } from "@/features/catalog/product-search-helpers";
 import { normalizeSearchText } from "@/lib/normalize";
+import type { CsvRow } from "@/lib/csv";
 
 type ProductRow = CatalogProduct & { key: string };
 type ProductFormValues = ProductRow & { aliasesText: string; variantsText: string };
@@ -40,6 +42,17 @@ export function ProductManagement() {
 
   const unitOptions = useMemo(() => Array.from(new Set(products.map((product) => product.unit).filter(Boolean))).sort((a, b) => a.localeCompare(b, "vi")), [products]);
   const hasActiveFilters = Boolean(query.trim()) || unitFilter !== "all";
+  const exportRows = useMemo(() => filteredProducts.map((product) => ({
+    sku: product.sku ?? "",
+    name: product.name,
+    unit: product.unit,
+    defaultPrice: String(product.defaultPrice ?? 0),
+    distributorPrice: product.distributorPrice == null ? "" : String(product.distributorPrice),
+    packageRule: product.packageRule ?? "",
+    weightPerUnitKg: String(product.weightPerUnitKg ?? 0),
+    aliases: product.aliases.map((alias) => alias.value).join(", "),
+    description: product.description ?? ""
+  })), [filteredProducts]);
 
   const columns: ColumnsType<ProductRow> = useMemo(
     () => [
@@ -150,6 +163,36 @@ export function ProductManagement() {
     message.success("Đã xóa sản phẩm khỏi database");
   }
 
+  async function importProducts(rows: CsvRow[]) {
+    if (!rows.length) {
+      message.warning("File Excel/CSV không có dữ liệu");
+      return;
+    }
+    let imported = 0;
+    for (const row of rows) {
+      const name = row.name || row["Tên sản phẩm"] || row["Sản phẩm"];
+      if (!name?.trim()) continue;
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sku: row.sku || undefined,
+          name: name.trim(),
+          unit: row.unit || row["Đơn vị"] || "cái",
+          defaultPrice: Number(row.defaultPrice || row["Giá đại lý"] || 0),
+          distributorPrice: row.distributorPrice || row["Giá phân phối"] ? Number(row.distributorPrice || row["Giá phân phối"]) : undefined,
+          packageRule: row.packageRule || row["Quy cách"] || "",
+          description: row.description || row["Mô tả"] || "",
+          weightPerUnitKg: Number(row.weightPerUnitKg || row["Kg/đơn vị"] || 0),
+          aliases: String(row.aliases || row["Alias"] || name).split(",").map((value) => ({ value: value.trim() })).filter((alias) => alias.value)
+        })
+      });
+      if (response.ok) imported += 1;
+    }
+    await loadProducts();
+    message.success(`Đã nhập ${imported} sản phẩm`);
+  }
+
   async function beforeUpload(file: UploadFile | File) {
     const dataUrl = await fileToDataUrl(file as File);
     setImageUrl(dataUrl);
@@ -174,6 +217,7 @@ export function ProductManagement() {
         actions={(
           <>
             <Button icon={<ReloadOutlined />} onClick={loadProducts}>Tải lại</Button>
+            <ImportExportButtons filename="san-pham-kegach.csv" rows={exportRows} onImport={importProducts} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
               Thêm sản phẩm
             </Button>

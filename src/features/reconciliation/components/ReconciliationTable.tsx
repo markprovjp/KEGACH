@@ -5,7 +5,9 @@ import { App, Button, Form, Input, Modal, Popconfirm, Space, Table, Tag } from "
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { TableOperationsBar } from "@/components/TableOperationsBar";
+import type { CsvRow } from "@/lib/csv";
 import { normalizeSearchText } from "@/lib/normalize";
 
 type ReconciliationRow = {
@@ -75,6 +77,16 @@ export function ReconciliationTable() {
     });
   }, [query, rows, statusFilter]);
   const hasActiveFilters = Boolean(query.trim()) || statusFilter !== "all";
+  const exportRows = useMemo(() => filteredRows.map((row) => ({
+    date: row.date,
+    kiotInvoiceCode: row.kiotInvoiceCode,
+    customer: row.customer,
+    appOrderCode: row.appOrderCode ?? "",
+    mismatchType: row.mismatchType,
+    requiredAction: row.requiredAction,
+    resolutionNote: row.resolutionNote ?? "",
+    status: row.status
+  })), [filteredRows]);
 
   async function loadRows() {
     setLoading(true);
@@ -139,6 +151,34 @@ export function ReconciliationTable() {
     message.success("Đã xóa dòng đối soát");
   }
 
+  async function importRows(rowsToImport: CsvRow[]) {
+    if (!rowsToImport.length) {
+      message.warning("File Excel/CSV không có dữ liệu");
+      return;
+    }
+    let imported = 0;
+    for (const row of rowsToImport) {
+      const kiotInvoiceCode = row.kiotInvoiceCode || row["Hóa đơn Kiot"];
+      if (!kiotInvoiceCode?.trim()) continue;
+      const response = await fetch("/api/reconciliation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kiotInvoiceCode,
+          customer: row.customer || row["Khách"] || "",
+          appOrderCode: row.appOrderCode || row["Mã đơn app"] || "",
+          mismatchType: row.mismatchType || row["Loại lệch"] || "Thiếu thông tin",
+          requiredAction: row.requiredAction || row["Việc cần làm"] || "Kiểm tra lại",
+          resolutionNote: row.resolutionNote || row["Ghi chú xử lý"] || "",
+          status: row.status === "resolved" ? "resolved" : "open"
+        })
+      });
+      if (response.ok) imported += 1;
+    }
+    await loadRows();
+    message.success(`Đã nhập ${imported} dòng đối soát`);
+  }
+
   if (!mounted) return <div className="table-fallback">Đang tải bảng đối soát...</div>;
 
   return (
@@ -167,6 +207,7 @@ export function ReconciliationTable() {
         actions={(
           <>
             <Button icon={<ReloadOutlined />} onClick={loadRows}>Tải lại</Button>
+            <ImportExportButtons filename="doi-soat-kegach.csv" rows={exportRows} onImport={importRows} />
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm dòng đối soát</Button>
           </>
         )}

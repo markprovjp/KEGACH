@@ -6,7 +6,9 @@ import type { ColumnsType } from "antd/es/table";
 import type { Key } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { TableOperationsBar } from "@/components/TableOperationsBar";
+import type { CsvRow } from "@/lib/csv";
 import { normalizeSearchText } from "@/lib/normalize";
 
 type CustomerRow = {
@@ -76,7 +78,16 @@ export function CustomerManagement() {
 
   const groupOptions = useMemo(() => uniqueOptions(customers.flatMap((customer) => splitGroups(customer.groups))), [customers]);
   const provinceOptions = useMemo(() => uniqueOptions(customers.map((customer) => customer.province || "Chưa có tỉnh")), [customers]);
-  const selectedCustomers = useMemo(() => customers.filter((customer) => selectedRowKeys.includes(customer.id)), [customers, selectedRowKeys]);
+  const exportRows = useMemo(() => filtered.map((customer) => ({
+    name: customer.name,
+    phone: customer.phone ?? "",
+    address: customer.address ?? "",
+    province: customer.province ?? "",
+    customerType: normalizeCustomerType(customer.customerType),
+    groups: customer.groups ?? "",
+    debt: String(customer.debt ?? 0),
+    note: customer.note ?? ""
+  })), [filtered]);
 
   const columns: ColumnsType<CustomerRow> = [
     { title: "Khách hàng", dataIndex: "name", fixed: "left", width: 240, render: (value) => <b>{value}</b> },
@@ -191,6 +202,34 @@ export function CustomerManagement() {
     await loadCustomers();
   }
 
+  async function importCustomers(rows: CsvRow[]) {
+    if (!rows.length) {
+      message.warning("File Excel/CSV không có dữ liệu");
+      return;
+    }
+    let imported = 0;
+    for (const row of rows) {
+      const name = row.name || row["Tên khách"] || row["Khách hàng"];
+      if (!name?.trim()) continue;
+      const response = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: row.phone || row["SĐT"] || "",
+          address: row.address || row["Địa chỉ"] || "",
+          province: row.province || row["Tỉnh"] || "",
+          customerType: row.customerType || row["Loại khách"] || "direct",
+          groups: row.groups || row["Nhóm"] || "",
+          note: row.note || row["Ghi chú"] || ""
+        })
+      });
+      if (response.ok) imported += 1;
+    }
+    await loadCustomers();
+    message.success(`Đã nhập ${imported} khách hàng`);
+  }
+
   function clearFilters() {
     setQuery("");
     setTypeFilter("all");
@@ -218,7 +257,12 @@ export function CustomerManagement() {
         onClearFilters={clearFilters}
         clearDisabled={!hasActiveFilters}
         selectedCount={selectedRowKeys.length}
-        actions={<Button icon={<PlusOutlined />} onClick={() => openEdit()}>Thêm khách</Button>}
+        actions={(
+          <>
+            <ImportExportButtons filename="khach-hang-kegach.csv" rows={exportRows} onImport={importCustomers} />
+            <Button icon={<PlusOutlined />} onClick={() => openEdit()}>Thêm khách</Button>
+          </>
+        )}
         bulkActions={(
           <>
             <Select value={bulkAction} onChange={(value) => { setBulkAction(value); setBulkValue(value === "customerType" ? "direct" : ""); }} options={[

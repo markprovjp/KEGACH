@@ -172,6 +172,14 @@ html[data-theme="dark"] .app-header {
   line-height: 1.25;
 }
 
+.quantity-entry {
+  min-width: 190px;
+}
+
+.quantity-entry.compact {
+  min-width: 170px;
+}
+
 .manual-invoice {
   border: 1px solid #e4e7ec;
   border-radius: 8px;
@@ -606,6 +614,11 @@ html[data-theme="dark"] .app-header {
   margin-bottom: 10px;
   border-radius: 8px;
   background: #fff;
+}
+
+.kanban-card-overlay {
+  width: 300px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.26);
 }
 
 .kanban-ops-panel {

@@ -32,6 +32,7 @@ export type WorkflowCheckKey =
   | "handoff_checked"
   | "final_info_checked"
   | "cod_label_complete"
+  | "cod_info_sent_to_post"
   | "print_slip_discarded"
   | "customer_zalo_done"
   | "vehicle_phone_sent_customer";
@@ -53,6 +54,7 @@ export const workflowCheckLabels: Record<WorkflowCheckKey, string> = {
   handoff_checked: "Đã kiểm hàng trước khi bàn giao",
   final_info_checked: "Đã kiểm tra lại thông tin lần cuối",
   cod_label_complete: "Tem COD đủ tên, SĐT, địa chỉ, tiền, SL, KL, cước",
+  cod_info_sent_to_post: "Đã in/gửi thông tin COD cho bưu điện/đơn vị giao",
   print_slip_discarded: "Đã hủy/bỏ phiếu in đã dùng",
   customer_zalo_done: "Đã báo khách qua Zalo khi giao xong",
   vehicle_phone_sent_customer: "Đã gửi SĐT xe nhận hàng cho khách"
@@ -73,7 +75,7 @@ export const workflowPhaseChecks: Record<WorkflowPhaseKey, WorkflowCheckKey[]> =
   intake: ["asked_extra_items", "draft_sent_to_tan", "draft_sent_customer_confirmed", "warehouse_customer_finalized", "kiot_invoice_created", "official_order_sent_customer"],
   vehicle: ["carrier_contacted"],
   packing: ["sent_group_for_packing", "packing_photo_taken", "package_count_recorded", "labels_attached"],
-  handoff: ["shipper_order_confirmed", "handoff_checked", "final_info_checked", "cod_label_complete", "print_slip_discarded"],
+  handoff: ["shipper_order_confirmed", "handoff_checked", "final_info_checked", "cod_label_complete", "cod_info_sent_to_post", "print_slip_discarded"],
   finish: ["customer_zalo_done", "vehicle_phone_sent_customer"],
   report: ["official_order_photo_sent_group"]
 };
@@ -141,7 +143,10 @@ export function getWorkflowRequiredKeys(order: WorkflowOrderInput): WorkflowChec
     required.add("handoff_checked");
     required.add("final_info_checked");
     required.add("print_slip_discarded");
-    if (type === "cod") required.add("cod_label_complete");
+    if (type === "cod") {
+      required.add("cod_label_complete");
+      required.add("cod_info_sent_to_post");
+    }
   }
   if (status === "delivered") {
     required.add("customer_zalo_done");

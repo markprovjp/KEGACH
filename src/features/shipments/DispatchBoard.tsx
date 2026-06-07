@@ -5,7 +5,9 @@ import { App, Button, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typogra
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { TableOperationsBar } from "@/components/TableOperationsBar";
+import type { CsvRow } from "@/lib/csv";
 import { normalizeSearchText } from "@/lib/normalize";
 
 type CarrierRow = { id: string; key: string; name: string; phone: string; route: string; note?: string | null };
@@ -31,6 +33,12 @@ export function DispatchBoard() {
     if (!normalized) return carriers;
     return carriers.filter((carrier) => normalizeSearchText(`${carrier.name} ${carrier.phone} ${carrier.route} ${carrier.note ?? ""}`).includes(normalized));
   }, [carriers, query]);
+  const exportRows = useMemo(() => filtered.map((carrier) => ({
+    name: carrier.name,
+    phone: carrier.phone,
+    route: carrier.route,
+    note: carrier.note ?? ""
+  })), [filtered]);
 
   const columns: ColumnsType<CarrierRow> = [
     { title: "Nhà xe", dataIndex: "name", fixed: "left", width: 240, render: (value) => <b>{value}</b> },
@@ -92,6 +100,31 @@ export function DispatchBoard() {
     message.success("Đã xóa nhà xe khỏi database");
   }
 
+  async function importCarriers(rows: CsvRow[]) {
+    if (!rows.length) {
+      message.warning("File Excel/CSV không có dữ liệu");
+      return;
+    }
+    let imported = 0;
+    for (const row of rows) {
+      const name = row.name || row["Nhà xe"];
+      if (!name?.trim()) continue;
+      const response = await fetch("/api/carriers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: row.phone || row["Số điện thoại"] || "",
+          route: row.route || row["Tuyến"] || "",
+          note: row.note || row["Ghi chú"] || ""
+        })
+      });
+      if (response.ok) imported += 1;
+    }
+    await loadCarriers();
+    message.success(`Đã nhập ${imported} nhà xe`);
+  }
+
   return (
     <div>
       <div className="dispatch-summary">
@@ -118,6 +151,7 @@ export function DispatchBoard() {
           actions={(
             <>
               <Button icon={<ReloadOutlined />} onClick={loadCarriers}>Tải lại</Button>
+              <ImportExportButtons filename="nha-xe-kegach.csv" rows={exportRows} onImport={importCarriers} />
               <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
                 Thêm nhà xe
               </Button>

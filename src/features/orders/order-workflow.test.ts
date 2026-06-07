@@ -30,6 +30,7 @@ describe("order workflow", () => {
       "handoff_checked",
       "final_info_checked",
       "cod_label_complete",
+      "cod_info_sent_to_post",
       "print_slip_discarded"
     ]));
   });

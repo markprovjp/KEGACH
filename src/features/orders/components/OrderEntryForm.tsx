@@ -7,11 +7,13 @@ import { useEffect, useMemo, useState } from "react";
 import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { ProductSearch } from "@/features/catalog/components/ProductSearch";
+import { convertProductQuantity, getProductQuantityUnits } from "@/features/catalog/package-conversion";
 import { CustomerSearch } from "@/features/customers/components/CustomerSearch";
 import { parseFreeformOrderText } from "@/features/orders/freeform-order-parser";
 import { estimateOrderWeightKg, parseKiotInvoiceText } from "@/features/orders/kiot-invoice-parser";
 import { orderTypeLabels, paymentStatusLabels, type OrderType, type PaymentStatus } from "@/features/orders/order-workflow";
 import { WorkflowChecklist } from "@/features/orders/components/WorkflowChecklist";
+import { printCodHandoff, printPackingSlip as openPackingSlip } from "@/features/orders/print-documents";
 import { formatMoney, formatMoneyInput, formatQuantityInput, parseMoneyInput, parseQuantityInput } from "@/lib/number-format";
 
 type Line = {
@@ -185,11 +187,15 @@ export function OrderEntryForm() {
     {
       title: "Số lượng",
       dataIndex: "quantity",
-      width: 130,
+      width: 230,
       align: "right",
       render: (_, record) => (
-        <div>
-          <InputNumber min={0.001} step={0.5} value={record.quantity} formatter={formatQuantityInput} parser={parseQuantityInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1), conversionNote: undefined })} style={{ width: "100%" }} />
+        <div className="quantity-entry">
+          <Space.Compact style={{ width: "100%" }}>
+            <InputNumber min={0.001} step={0.5} value={record.enteredQuantity ?? record.quantity} formatter={formatQuantityInput} parser={parseQuantityInput} onChange={(value) => updateLineQuantity(record, Number(value ?? 1), record.enteredUnit)} style={{ width: "58%" }} />
+            <Select value={record.enteredUnit ?? getLineProduct(record)?.unit ?? ""} options={getProductQuantityUnits(getLineProduct(record)).map((unit) => ({ value: unit.value, label: unit.label }))} onChange={(value) => updateLineQuantity(record, record.enteredQuantity ?? record.quantity, value)} style={{ width: "42%" }} />
+          </Space.Compact>
+          <Typography.Text type="secondary" className="line-conversion-note">SL lưu: {record.quantity.toLocaleString("vi-VN")} {getLineProduct(record)?.unit ?? ""}</Typography.Text>
           {record.conversionNote ? <Typography.Text type="secondary" className="line-conversion-note">{record.conversionNote}</Typography.Text> : null}
         </div>
       )
@@ -234,10 +240,13 @@ export function OrderEntryForm() {
     {
       title: "SL",
       dataIndex: "quantity",
-      width: 120,
+      width: 190,
       render: (_, record) => (
-        <div>
-          <InputNumber min={0.001} step={0.5} value={record.quantity} formatter={formatQuantityInput} parser={parseQuantityInput} onChange={(value) => updateLine(record.key, { quantity: Number(value ?? 1), conversionNote: undefined })} />
+        <div className="quantity-entry compact">
+          <Space.Compact>
+            <InputNumber min={0.001} step={0.5} value={record.enteredQuantity ?? record.quantity} formatter={formatQuantityInput} parser={parseQuantityInput} onChange={(value) => updateLineQuantity(record, Number(value ?? 1), record.enteredUnit)} style={{ width: 82 }} />
+            <Select value={record.enteredUnit ?? getLineProduct(record)?.unit ?? ""} options={getProductQuantityUnits(getLineProduct(record)).map((unit) => ({ value: unit.value, label: unit.label }))} onChange={(value) => updateLineQuantity(record, record.enteredQuantity ?? record.quantity, value)} style={{ width: 84 }} />
+          </Space.Compact>
           {record.conversionNote ? <Typography.Text type="secondary" className="line-conversion-note">{record.conversionNote}</Typography.Text> : null}
         </div>
       )
@@ -289,9 +298,24 @@ export function OrderEntryForm() {
       productId,
       productName: product?.name,
       unitPrice: product?.defaultPrice ?? line.unitPrice,
-      enteredQuantity: undefined,
-      enteredUnit: undefined,
+      enteredQuantity: line.enteredQuantity ?? line.quantity,
+      enteredUnit: product?.unit,
       conversionNote: undefined
+    });
+  }
+
+  function getLineProduct(line: Line) {
+    return products.find((product) => product.id === line.productId);
+  }
+
+  function updateLineQuantity(line: Line, enteredQuantity: number, enteredUnit?: string) {
+    const product = getLineProduct(line);
+    const converted = convertProductQuantity({ product, enteredQuantity, enteredUnit });
+    updateLine(line.key, {
+      enteredQuantity,
+      enteredUnit: converted.enteredUnit,
+      quantity: converted.quantity,
+      conversionNote: converted.conversionNote
     });
   }
 
@@ -431,72 +455,32 @@ export function OrderEntryForm() {
       return;
     }
     const values = form.getFieldsValue();
-    const printWindow = window.open("", "_blank", "width=900,height=1100");
-    if (!printWindow) {
-      message.error("Trình duyệt đang chặn cửa sổ in");
-      return;
+    try {
+      openPackingSlip({
+        ...values,
+        lines: lines.map((line) => {
+          const product = getLineProduct(line);
+          return { productName: product?.name ?? line.productName, unit: product?.unit, quantity: line.quantity, note: line.conversionNote };
+        })
+      });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "Không mở được cửa sổ in");
     }
-    const rows = lines.map((line, index) => {
-      const product = products.find((item) => item.id === line.productId);
-      return `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${escapeHtml(product?.name ?? line.productName ?? "")}</td>
-          <td>${escapeHtml(product?.unit ?? "")}</td>
-          <td>${line.quantity.toLocaleString("vi-VN")}</td>
-          <td></td>
-        </tr>
-      `;
-    }).join("");
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Phiếu soạn hàng</title>
-          <style>
-            body { font-family: "Times New Roman", serif; color: #111; margin: 28px; }
-            .header { text-align: center; font-weight: 700; line-height: 1.25; font-size: 20px; }
-            .title { text-align: center; font-size: 24px; font-weight: 700; margin: 22px 0 6px; }
-            .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 48px; font-size: 18px; margin: 20px 0; }
-            table { width: 100%; border-collapse: collapse; font-size: 18px; }
-            th, td { border: 1px solid #444; padding: 8px; }
-            th { font-weight: 700; }
-            td:nth-child(1), td:nth-child(3), td:nth-child(4), td:nth-child(5) { text-align: center; }
-            .footer { display: grid; grid-template-columns: 1fr 1fr; margin-top: 46px; text-align: center; font-size: 18px; }
-            .note { margin-top: 18px; white-space: pre-wrap; font-size: 16px; }
-            @media print { body { margin: 18mm; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            PHỤ KIỆN ỐP LÁT THANH HÓA<br />
-            CƠ SỞ SẢN XUẤT NHỰA: LONG HẢI PLASTIC<br />
-            Đ/C: Đông Lĩnh - Đông Sơn - Thanh Hóa<br />
-            Điện thoại: 0393.393.188 / Zalo: 0393.393.188
-          </div>
-          <div class="title">PHIẾU SOẠN HÀNG</div>
-          <div class="meta">
-            <div><b>Khách hàng:</b> ${escapeHtml(values.customerName ?? "")}</div>
-            <div><b>SĐT:</b> ${escapeHtml(values.customerPhone ?? "")}</div>
-            <div><b>Người nhận:</b> ${escapeHtml(values.receiverName || values.customerName || "")}</div>
-            <div><b>SĐT nhận:</b> ${escapeHtml(values.receiverPhone || values.customerPhone || "")}</div>
-            <div><b>Địa chỉ:</b> ${escapeHtml(values.receiverAddress || values.customerAddress || "-")}</div>
-            <div><b>Nhà xe:</b> ${escapeHtml(values.carrierName ?? "-")}</div>
-            <div><b>Số kiện:</b> ${values.packageCount ?? ""}</div>
-            <div><b>Khối lượng:</b> ${values.estimatedWeightKg ?? ""} kg</div>
-          </div>
-          <table>
-            <thead><tr><th>STT</th><th>Tên hàng</th><th>ĐVT</th><th>Số lượng</th><th>Đã soạn</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <div class="note"><b>Ghi chú:</b> ${escapeHtml(values.note ?? "")}</div>
-          <div class="footer"><div>Người soạn hàng</div><div>Người kiểm hàng</div></div>
-          <script>window.onload = () => { window.print(); };</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+  }
+
+  function printCodSlip() {
+    const values = form.getFieldsValue();
+    try {
+      printCodHandoff({
+        ...values,
+        productSummary: lines.map((line) => {
+          const product = getLineProduct(line);
+          return `${product?.name ?? line.productName ?? ""} x ${line.quantity.toLocaleString("vi-VN")} ${product?.unit ?? ""}`;
+        }).join(", ")
+      });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "Không mở được cửa sổ in COD");
+    }
   }
 
   async function saveOrder(nextOfficial = isOfficial) {
@@ -781,6 +765,7 @@ export function OrderEntryForm() {
           <Button icon={<SaveOutlined />} loading={saving} onClick={() => saveOrder(false)}>Lưu đơn nháp</Button>
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => saveOrder(true)}>Lưu đơn chính thức</Button>
           <Button icon={<PrinterOutlined />} onClick={printPackingSlip}>In phiếu soạn hàng</Button>
+          {watchedValues.paymentKind === "cod" || Number(watchedValues.codAmount ?? 0) > 0 ? <Button icon={<PrinterOutlined />} onClick={printCodSlip}>In phiếu gửi COD</Button> : null}
         </Space>
       </div>
     </Form>
@@ -811,13 +796,4 @@ export function OrderEntryForm() {
     </Modal>
     </>
   );
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
