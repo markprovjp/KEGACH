@@ -2,11 +2,13 @@
 
 import { Alert, Card, Col, Row, Statistic, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
-import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { useEffect, useMemo, useState } from "react";
+import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { TableOperationsBar } from "@/components/TableOperationsBar";
 import { OperationsCharts } from "@/features/dashboard/OperationsCharts";
 import type { OrderStatus } from "@/features/orders/order-status";
 import { orderStatusLabels } from "@/features/orders/order-status";
+import { normalizeSearchText } from "@/lib/normalize";
 
 type OrderRow = {
   id: string;
@@ -44,6 +46,8 @@ export default function DashboardPage() {
   const [openIssues, setOpenIssues] = useState(0);
   const [loading, setLoading] = useState(true);
   const [pageSize, setPageSize] = useState<PageSizeValue>(10);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     setMounted(true);
@@ -57,6 +61,16 @@ export default function DashboardPage() {
   const blockedCount = orders.filter((order) => order.nextAction?.severity === "blocked").length;
   const todoCount = orders.filter((order) => order.nextAction?.severity === "todo").length;
   const mustDoOrders = orders.filter((order) => order.nextAction && order.nextAction.severity !== "done").slice(0, 8);
+  const statusOptions = useMemo(() => Array.from(new Set(orders.map((order) => order.status))).map((status) => ({ value: status, label: orderStatusLabels[status] })).sort((a, b) => String(a.label).localeCompare(String(b.label), "vi")), [orders]);
+  const filteredOrders = useMemo(() => {
+    const normalized = normalizeSearchText(query);
+    return orders.filter((order) => {
+      const matchesText = !normalized || normalizeSearchText(`${order.kiotInvoiceCode} ${order.customer} ${order.productSummary} ${orderStatusLabels[order.status]} ${order.nextAction?.title ?? ""}`).includes(normalized);
+      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+      return matchesText && matchesStatus;
+    });
+  }, [orders, query, statusFilter]);
+  const hasActiveFilters = Boolean(query.trim()) || statusFilter !== "all";
 
   return (
     <main>
@@ -90,8 +104,18 @@ export default function DashboardPage() {
       <Card title="Đơn đang chạy" style={{ marginTop: 14 }}>
         {mounted ? (
           <>
-            <PageSizeControl total={orders.length} value={pageSize} onChange={setPageSize} />
-            <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={orders} pagination={tablePagination(pageSize, orders.length, setPageSize)} scroll={{ x: 900 }} />
+            <TableOperationsBar
+              total={filteredOrders.length}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              searchValue={query}
+              onSearchChange={setQuery}
+              searchPlaceholder="Tìm hóa đơn, khách, hàng, việc cần làm"
+              filters={[{ key: "status", label: "Trạng thái", value: statusFilter, defaultValue: "all", onChange: (value) => setStatusFilter(String(value)), showSearch: true, options: [{ value: "all", label: "Tất cả" }, ...statusOptions] }]}
+              onClearFilters={() => { setQuery(""); setStatusFilter("all"); }}
+              clearDisabled={!hasActiveFilters}
+            />
+            <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredOrders} pagination={tablePagination(pageSize, filteredOrders.length, setPageSize)} scroll={{ x: 900 }} />
           </>
         ) : <div className="table-fallback">Đang tải danh sách đơn...</div>}
       </Card>

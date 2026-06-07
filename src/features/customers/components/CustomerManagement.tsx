@@ -1,11 +1,12 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined, SearchOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import { App, Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { Key } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { TableOperationsBar } from "@/components/TableOperationsBar";
 import { normalizeSearchText } from "@/lib/normalize";
 
 type CustomerRow = {
@@ -71,6 +72,7 @@ export function CustomerManagement() {
       return matchesText && matchesType && matchesGroup && matchesProvince && matchesDebt;
     });
   }, [customers, debtFilter, groupFilter, provinceFilter, query, typeFilter]);
+  const hasActiveFilters = Boolean(query.trim()) || typeFilter !== "all" || groupFilter !== "all" || provinceFilter !== "all" || debtFilter !== "all";
 
   const groupOptions = useMemo(() => uniqueOptions(customers.flatMap((customer) => splitGroups(customer.groups))), [customers]);
   const provinceOptions = useMemo(() => uniqueOptions(customers.map((customer) => customer.province || "Chưa có tỉnh")), [customers]);
@@ -199,40 +201,46 @@ export function CustomerManagement() {
 
   return (
     <>
-      <div className="section-toolbar">
-        <Input prefix={<SearchOutlined />} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên, SĐT, địa chỉ, ghi chú" style={{ maxWidth: 420 }} />
-        <Space>
-          <PageSizeControl total={filtered.length} value={pageSize} onChange={setPageSize} noun="khách" />
-          <Button icon={<PlusOutlined />} onClick={() => openEdit()}>Thêm khách</Button>
-        </Space>
-      </div>
-      <div className="customer-filter-panel">
-        <Select value={typeFilter} onChange={setTypeFilter} options={[{ value: "all", label: "Tất cả loại khách" }, ...customerTypeOptions]} />
-        <Select showSearch value={groupFilter} onChange={setGroupFilter} options={[{ value: "all", label: "Tất cả nhóm" }, ...groupOptions.map((value) => ({ value, label: value }))]} />
-        <Select showSearch value={provinceFilter} onChange={setProvinceFilter} options={[{ value: "all", label: "Tất cả tỉnh" }, ...provinceOptions.map((value) => ({ value, label: value }))]} />
-        <Select value={debtFilter} onChange={setDebtFilter} options={debtFilterOptions} />
-        <Button onClick={clearFilters}>Xóa lọc</Button>
-      </div>
-      <div className="bulk-action-bar">
-        <span>Đã chọn <b>{selectedRowKeys.length.toLocaleString("vi-VN")}</b> khách</span>
-        <Select value={bulkAction} onChange={(value) => { setBulkAction(value); setBulkValue(value === "customerType" ? "direct" : ""); }} options={[
-          { value: "customerType", label: "Đổi loại khách" },
-          { value: "groups", label: "Gán nhóm" },
-          { value: "province", label: "Gán tỉnh" },
-          { value: "note", label: "Ghi chú" }
-        ]} />
-        {bulkAction === "customerType" ? (
-          <Select value={String(bulkValue)} onChange={setBulkValue} options={customerTypeOptions} />
-        ) : bulkAction === "groups" ? (
-          <Select mode="tags" value={Array.isArray(bulkValue) ? bulkValue : splitGroups(String(bulkValue))} onChange={setBulkValue} options={groupOptions.map((value) => ({ value, label: value }))} placeholder="Nhập nhóm" />
-        ) : bulkAction === "province" ? (
-          <Select showSearch value={String(bulkValue)} onChange={setBulkValue} options={provinceOptions.map((value) => ({ value, label: value }))} placeholder="Chọn/nhập tỉnh" />
-        ) : (
-          <Input value={String(bulkValue)} onChange={(event) => setBulkValue(event.target.value)} placeholder="Ghi chú mới" />
+      <TableOperationsBar
+        total={filtered.length}
+        noun="khách"
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Tìm tên, SĐT, địa chỉ, ghi chú"
+        filters={[
+          { key: "type", label: "Loại khách", value: typeFilter, defaultValue: "all", onChange: (value) => setTypeFilter(String(value)), options: [{ value: "all", label: "Tất cả" }, ...customerTypeOptions] },
+          { key: "group", label: "Nhóm", value: groupFilter, defaultValue: "all", onChange: (value) => setGroupFilter(String(value)), showSearch: true, options: [{ value: "all", label: "Tất cả" }, ...groupOptions.map((value) => ({ value, label: value }))] },
+          { key: "province", label: "Tỉnh", value: provinceFilter, defaultValue: "all", onChange: (value) => setProvinceFilter(String(value)), showSearch: true, options: [{ value: "all", label: "Tất cả" }, ...provinceOptions.map((value) => ({ value, label: value }))] },
+          { key: "debt", label: "Công nợ", value: debtFilter, defaultValue: "all", onChange: (value) => setDebtFilter(String(value)), options: debtFilterOptions }
+        ]}
+        onClearFilters={clearFilters}
+        clearDisabled={!hasActiveFilters}
+        selectedCount={selectedRowKeys.length}
+        actions={<Button icon={<PlusOutlined />} onClick={() => openEdit()}>Thêm khách</Button>}
+        bulkActions={(
+          <>
+            <Select value={bulkAction} onChange={(value) => { setBulkAction(value); setBulkValue(value === "customerType" ? "direct" : ""); }} options={[
+              { value: "customerType", label: "Đổi loại khách" },
+              { value: "groups", label: "Gán nhóm" },
+              { value: "province", label: "Gán tỉnh" },
+              { value: "note", label: "Ghi chú" }
+            ]} style={{ width: 150 }} />
+            {bulkAction === "customerType" ? (
+              <Select value={String(bulkValue)} onChange={setBulkValue} options={customerTypeOptions} style={{ width: 170 }} />
+            ) : bulkAction === "groups" ? (
+              <Select mode="tags" value={Array.isArray(bulkValue) ? bulkValue : splitGroups(String(bulkValue))} onChange={setBulkValue} options={groupOptions.map((value) => ({ value, label: value }))} placeholder="Nhập nhóm" style={{ minWidth: 220 }} />
+            ) : bulkAction === "province" ? (
+              <Select showSearch value={String(bulkValue)} onChange={setBulkValue} options={provinceOptions.map((value) => ({ value, label: value }))} placeholder="Chọn/nhập tỉnh" style={{ width: 190 }} />
+            ) : (
+              <Input value={String(bulkValue)} onChange={(event) => setBulkValue(event.target.value)} placeholder="Ghi chú mới" style={{ width: 260 }} />
+            )}
+            <Button type="primary" onClick={applyBulkAction}>Áp dụng hàng loạt</Button>
+            <Button onClick={() => setSelectedRowKeys([])}>Bỏ chọn</Button>
+          </>
         )}
-        <Button type="primary" disabled={!selectedRowKeys.length} onClick={applyBulkAction}>Áp dụng hàng loạt</Button>
-        <Button disabled={!selectedRowKeys.length} onClick={() => setSelectedRowKeys([])}>Bỏ chọn</Button>
-      </div>
+      />
       <Table
         rowKey="id"
         size="small"

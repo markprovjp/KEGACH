@@ -1,10 +1,12 @@
 "use client";
 
-import { CheckOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { CheckOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SaveOutlined } from "@ant-design/icons";
 import { App, Button, Form, Input, Modal, Popconfirm, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { TableOperationsBar } from "@/components/TableOperationsBar";
+import { normalizeSearchText } from "@/lib/normalize";
 
 type ReconciliationRow = {
   key: string;
@@ -27,6 +29,8 @@ export function ReconciliationTable() {
   const [editing, setEditing] = useState<ReconciliationRow | null>(null);
   const [mode, setMode] = useState<"edit" | "resolve">("edit");
   const [pageSize, setPageSize] = useState<PageSizeValue>(10);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "resolved">("all");
   const [form] = Form.useForm<ReconciliationRow>();
 
   useEffect(() => {
@@ -61,6 +65,16 @@ export function ReconciliationTable() {
     ],
     []
   );
+
+  const filteredRows = useMemo(() => {
+    const normalized = normalizeSearchText(query);
+    return rows.filter((row) => {
+      const matchesText = !normalized || normalizeSearchText(`${row.kiotInvoiceCode} ${row.customer} ${row.appOrderCode ?? ""} ${row.mismatchType} ${row.requiredAction} ${row.resolutionNote ?? ""}`).includes(normalized);
+      const matchesStatus = statusFilter === "all" || row.status === statusFilter;
+      return matchesText && matchesStatus;
+    });
+  }, [query, rows, statusFilter]);
+  const hasActiveFilters = Boolean(query.trim()) || statusFilter !== "all";
 
   async function loadRows() {
     setLoading(true);
@@ -129,12 +143,35 @@ export function ReconciliationTable() {
 
   return (
     <>
-      <div className="section-toolbar">
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm dòng đối soát</Button>
-        <PageSizeControl total={rows.length} value={pageSize} onChange={setPageSize} />
-        <Button onClick={loadRows}>Tải lại</Button>
-      </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={rows} pagination={tablePagination(pageSize, rows.length, setPageSize)} scroll={{ x: 1280 }} />
+      <TableOperationsBar
+        total={filteredRows.length}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Tìm hóa đơn, khách, loại lệch, việc cần làm"
+        filters={[{
+          key: "status",
+          label: "Trạng thái",
+          value: statusFilter,
+          defaultValue: "all",
+          onChange: (value) => setStatusFilter(value as typeof statusFilter),
+          options: [
+            { value: "all", label: "Tất cả" },
+            { value: "open", label: "Đang mở" },
+            { value: "resolved", label: "Đã xử lý" }
+          ]
+        }]}
+        onClearFilters={() => { setQuery(""); setStatusFilter("all"); }}
+        clearDisabled={!hasActiveFilters}
+        actions={(
+          <>
+            <Button icon={<ReloadOutlined />} onClick={loadRows}>Tải lại</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm dòng đối soát</Button>
+          </>
+        )}
+      />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredRows} pagination={tablePagination(pageSize, filteredRows.length, setPageSize)} scroll={{ x: 1280 }} />
       <Modal title={mode === "resolve" ? `Xử lý ${editing?.kiotInvoiceCode ?? ""}` : editing?.id ? `Sửa ${editing.kiotInvoiceCode}` : "Thêm dòng đối soát"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveRow} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }} width={680}>
         <Form form={form} layout="vertical">
           <div className="form-grid">

@@ -1,11 +1,12 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SaveOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SaveOutlined, UploadOutlined } from "@ant-design/icons";
 import { App, Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Table, Tag, Typography, Upload } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { TableOperationsBar } from "@/components/TableOperationsBar";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { buildProductSearchText, buildVariantLabel } from "@/features/catalog/product-search-helpers";
 import { normalizeSearchText } from "@/lib/normalize";
@@ -21,6 +22,7 @@ export function ProductManagement() {
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [pageSize, setPageSize] = useState<PageSizeValue>(10);
   const [query, setQuery] = useState("");
+  const [unitFilter, setUnitFilter] = useState("all");
   const [form] = Form.useForm<ProductFormValues>();
 
   useEffect(() => {
@@ -29,9 +31,15 @@ export function ProductManagement() {
 
   const filteredProducts = useMemo(() => {
     const normalized = normalizeSearchText(query);
-    if (!normalized) return products;
-    return products.filter((product) => buildProductSearchText(product).includes(normalized));
-  }, [products, query]);
+    return products.filter((product) => {
+      const matchesText = !normalized || buildProductSearchText(product).includes(normalized);
+      const matchesUnit = unitFilter === "all" || product.unit === unitFilter;
+      return matchesText && matchesUnit;
+    });
+  }, [products, query, unitFilter]);
+
+  const unitOptions = useMemo(() => Array.from(new Set(products.map((product) => product.unit).filter(Boolean))).sort((a, b) => a.localeCompare(b, "vi")), [products]);
+  const hasActiveFilters = Boolean(query.trim()) || unitFilter !== "all";
 
   const columns: ColumnsType<ProductRow> = useMemo(
     () => [
@@ -152,15 +160,26 @@ export function ProductManagement() {
     <div>
       <div className="section-toolbar">
         <Typography.Text type="secondary">Quản lý giá, đơn vị, quy cách và alias dùng khi tách đơn chat.</Typography.Text>
-        <Space wrap>
-          <Input prefix={<SearchOutlined />} placeholder="Tìm sản phẩm, alias, B14, CAT14..." value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: 300 }} />
-          <Button icon={<ReloadOutlined />} onClick={loadProducts}>Tải lại</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
-            Thêm sản phẩm
-          </Button>
-        </Space>
       </div>
-      <PageSizeControl total={filteredProducts.length} value={pageSize} onChange={setPageSize} />
+      <TableOperationsBar
+        total={filteredProducts.length}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Tìm sản phẩm, alias, B14, CAT14..."
+        filters={[{ key: "unit", label: "Đơn vị", value: unitFilter, defaultValue: "all", onChange: (value) => setUnitFilter(String(value)), showSearch: true, options: [{ value: "all", label: "Tất cả" }, ...unitOptions.map((value) => ({ value, label: value }))] }]}
+        onClearFilters={() => { setQuery(""); setUnitFilter("all"); }}
+        clearDisabled={!hasActiveFilters}
+        actions={(
+          <>
+            <Button icon={<ReloadOutlined />} onClick={loadProducts}>Tải lại</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
+              Thêm sản phẩm
+            </Button>
+          </>
+        )}
+      />
       <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredProducts} pagination={tablePagination(pageSize, filteredProducts.length, setPageSize)} scroll={{ x: 1660, y: 620 }} />
       <Modal title={editing?.name ? `Sửa ${editing.name}` : "Thêm sản phẩm"} open={!!editing} onCancel={() => setEditing(null)} onOk={saveProduct} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">

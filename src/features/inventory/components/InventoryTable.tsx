@@ -1,10 +1,11 @@
 "use client";
 
-import { EditOutlined, ReloadOutlined, SaveOutlined, SearchOutlined } from "@ant-design/icons";
+import { EditOutlined, ReloadOutlined, SaveOutlined } from "@ant-design/icons";
 import { App, Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { TableOperationsBar } from "@/components/TableOperationsBar";
 import { normalizeSearchText } from "@/lib/normalize";
 
 type InventoryRow = {
@@ -57,6 +58,7 @@ export function InventoryTable() {
       return matchesText && matchesStock;
     });
   }, [rows, query, stockFilter]);
+  const hasActiveFilters = Boolean(query.trim()) || stockFilter !== "all";
 
   const columns: ColumnsType<InventoryRow> = useMemo(
     () => [
@@ -131,24 +133,30 @@ export function InventoryTable() {
 
   return (
     <>
-      <div className="table-toolbar">
-        <Space wrap>
-          <Input prefix={<SearchOutlined />} placeholder="Tìm sản phẩm, biến động..." value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: 300 }} />
-          <Select
-            value={stockFilter}
-            onChange={setStockFilter}
-            style={{ width: 160 }}
-            options={[
-              { value: "all", label: "Tất cả tồn" },
-              { value: "low", label: "Tồn thấp" },
-              { value: "reserved", label: "Đang giữ" },
-              { value: "out", label: "Hết khả dụng" }
-            ]}
-          />
-          <Button icon={<ReloadOutlined />} onClick={loadInventory}>Tải lại</Button>
-        </Space>
-        <PageSizeControl total={filteredRows.length} value={pageSize} onChange={setPageSize} />
-      </div>
+      <TableOperationsBar
+        total={filteredRows.length}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Tìm sản phẩm, biến động..."
+        filters={[{
+          key: "stock",
+          label: "Tình trạng tồn",
+          value: stockFilter,
+          defaultValue: "all",
+          onChange: (value) => setStockFilter(value as typeof stockFilter),
+          options: [
+            { value: "all", label: "Tất cả" },
+            { value: "low", label: "Tồn thấp" },
+            { value: "reserved", label: "Đang giữ" },
+            { value: "out", label: "Hết khả dụng" }
+          ]
+        }]}
+        onClearFilters={() => { setQuery(""); setStockFilter("all"); }}
+        clearDisabled={!hasActiveFilters}
+        actions={<Button icon={<ReloadOutlined />} onClick={loadInventory}>Tải lại</Button>}
+      />
       <Table rowKey="key" size="small" loading={loading} columns={columns} dataSource={filteredRows} pagination={tablePagination(pageSize, filteredRows.length, setPageSize)} scroll={{ x: 1060 }} />
       <Modal title={`Điều chỉnh tồn: ${editing?.product ?? ""}`} open={!!editing} onCancel={() => setEditing(null)} onOk={saveAdjustment} okText="Lưu" cancelText="Đóng" okButtonProps={{ icon: <SaveOutlined /> }}>
         <Form form={form} layout="vertical">

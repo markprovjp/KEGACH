@@ -1,12 +1,14 @@
 "use client";
 
-import { SaveOutlined } from "@ant-design/icons";
+import { ReloadOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Form, Input, InputNumber, Select, Space, Statistic, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { PageSizeControl, tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { tablePagination, type PageSizeValue } from "@/components/PageSizeControl";
+import { TableOperationsBar } from "@/components/TableOperationsBar";
 import type { CatalogProduct } from "@/features/catalog/catalog-types";
 import { getPackagingRuleByFinishedSku, packagingRules } from "@/features/inventory/packaging-rules";
+import { normalizeSearchText } from "@/lib/normalize";
 
 type PackagingBatchRow = {
   id: string;
@@ -66,6 +68,7 @@ export function PackagingManagement() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pageSize, setPageSize] = useState<PageSizeValue>(10);
+  const [query, setQuery] = useState("");
   const [form] = Form.useForm<PackagingFormValues>();
   const selectedFinishedId = Form.useWatch("finishedProductId", form);
   const selectedRawId = Form.useWatch("rawProductId", form);
@@ -103,6 +106,11 @@ export function PackagingManagement() {
     .map((rule) => productBySku.get(rule.bagSku))
     .filter((product): product is CatalogProduct => Boolean(product))
     .map((product) => ({ value: product.id, label: `${product.name} (${product.unit})` })), [productBySku]);
+  const filteredBatches = useMemo(() => {
+    const normalized = normalizeSearchText(query);
+    if (!normalized) return data.batches;
+    return data.batches.filter((batch) => normalizeSearchText(`${batch.code} ${batch.rawProduct} ${batch.bagProduct} ${batch.finishedProduct} ${batch.note}`).includes(normalized));
+  }, [data.batches, query]);
   const columns: ColumnsType<PackagingBatchRow> = [
     { title: "Mã", dataIndex: "code", width: 100, fixed: "left" },
     { title: "Ngày", dataIndex: "createdAt", width: 120, render: (value: string) => new Date(value).toLocaleDateString("vi-VN") },
@@ -215,11 +223,18 @@ export function PackagingManagement() {
           <Button onClick={loadAll}>Tải lại</Button>
         </Space>
       </Form>
-      <div className="table-toolbar">
-        <b>Lịch sử đóng gói</b>
-        <PageSizeControl total={data.batches.length} value={pageSize} onChange={setPageSize} />
-      </div>
-      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={data.batches} pagination={tablePagination(pageSize, data.batches.length, setPageSize)} scroll={{ x: 900 }} />
+      <TableOperationsBar
+        total={filteredBatches.length}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Tìm mã lô, thành phẩm, ghi chú"
+        onClearFilters={() => setQuery("")}
+        clearDisabled={!query.trim()}
+        actions={<Button icon={<ReloadOutlined />} onClick={loadAll}>Tải lại</Button>}
+      />
+      <Table rowKey="id" size="small" loading={loading} columns={columns} dataSource={filteredBatches} pagination={tablePagination(pageSize, filteredBatches.length, setPageSize)} scroll={{ x: 900 }} />
     </div>
   );
 }
