@@ -56,6 +56,7 @@ type CarrierOption = {
 };
 
 type EntryMode = "invoice" | "ocr";
+type OrderMode = "draft" | "official";
 
 const defaultInvoiceText = `HÓA ĐƠN BÁN HÀNG
 Số hóa đơn: HD004066
@@ -96,11 +97,12 @@ export function OrderEntryForm() {
   const [lines, setLines] = useState<Line[]>([]);
   const [rawText, setRawText] = useState(defaultInvoiceText);
   const [entryMode, setEntryMode] = useState<EntryMode>("invoice");
+  const [orderMode, setOrderMode] = useState<OrderMode>("draft");
   const [saving, setSaving] = useState(false);
   const [linePageSize, setLinePageSize] = useState<PageSizeValue>(10);
   const parsed = useMemo(() => parseKiotInvoiceText(rawText, products), [rawText, products]);
   const watchedValues = Form.useWatch([], form) ?? {};
-  const isOfficial = Boolean(watchedValues.isOfficial);
+  const isOfficial = orderMode === "official";
   const stockByProductId = useMemo(() => new Map(inventory.map((row) => [row.productId, row])), [inventory]);
   const stockWarnings = useMemo(() => lines
     .map((line) => {
@@ -118,6 +120,10 @@ export function OrderEntryForm() {
     fetch("/api/carriers").then((response) => response.json()).then(setCarriers).catch(() => setCarriers([]));
     setLines([{ key: crypto.randomUUID(), quantity: 1, unitPrice: 0 }]);
   }, []);
+
+  useEffect(() => {
+    form.setFieldsValue({ isOfficial });
+  }, [form, isOfficial]);
 
   const totalQuantity = lines.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0);
   const totalAmount = lines.reduce((sum, line) => sum + Number(line.quantity ?? 0) * Number(line.unitPrice ?? 0), 0);
@@ -274,6 +280,7 @@ export function OrderEntryForm() {
       packageCount: nextLines.length,
       estimatedWeightKg: estimateOrderWeightKg(parsed.lines, products)
     });
+    setOrderMode("official");
     message.success("Đã trích xuất hóa đơn Kiot vào đơn vận hành");
   }
 
@@ -352,6 +359,7 @@ export function OrderEntryForm() {
   async function saveOrder(nextOfficial = isOfficial) {
     const values = { ...form.getFieldsValue(), isOfficial: nextOfficial };
     form.setFieldValue("isOfficial", nextOfficial);
+    setOrderMode(nextOfficial ? "official" : "draft");
     setSaving(true);
     const response = await fetch("/api/orders", {
       method: "POST",
@@ -377,8 +385,8 @@ export function OrderEntryForm() {
           <div className="muted">Đơn nháp dùng để gửi Tân chuẩn bị hàng hoặc giữ nhu cầu khi đang thiếu hàng. Đơn chính thức là đơn đã chốt, có hóa đơn Kiot.</div>
         </div>
         <Segmented
-          value={isOfficial ? "official" : "draft"}
-          onChange={(value) => form.setFieldValue("isOfficial", value === "official")}
+          value={orderMode}
+          onChange={(value) => setOrderMode(value as OrderMode)}
           options={[
             { value: "draft", label: "Đơn nháp" },
             { value: "official", label: "Đơn chính thức" }
@@ -478,7 +486,10 @@ export function OrderEntryForm() {
                     <Select options={Object.entries(orderTypeLabels).map(([value, label]) => ({ value, label }))} />
                   </Form.Item>
                   <Form.Item label="Loại phiếu" name="isOfficial">
-                    <Select options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]} />
+                    <Select
+                      options={[{ value: false, label: "Đơn nháp" }, { value: true, label: "Đơn chính thức" }]}
+                      onChange={(value) => setOrderMode(value ? "official" : "draft")}
+                    />
                   </Form.Item>
                   <Form.Item label="Khách hàng có sẵn" name="customerId"><CustomerSearch /></Form.Item>
                   <Form.Item label="Tên khách" name="customerName"><Input /></Form.Item>
@@ -526,9 +537,9 @@ export function OrderEntryForm() {
                   <Form.Item name="workflowChecks" noStyle>
                     <WorkflowChecklist
                       order={{
-                        status: watchedValues.isOfficial && watchedValues.kiotInvoiceCode ? "kiot_linked" : "draft",
+                        status: isOfficial && watchedValues.kiotInvoiceCode ? "kiot_linked" : "draft",
                         orderType: watchedValues.orderType,
-                        isOfficial: watchedValues.isOfficial,
+                        isOfficial,
                         kiotInvoiceCode: watchedValues.kiotInvoiceCode,
                         customerName: watchedValues.customerName,
                         customerPhone: watchedValues.customerPhone,
