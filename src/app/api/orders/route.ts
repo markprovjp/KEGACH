@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import type { OrderStatus } from "@/features/orders/order-status";
 import { getWorkflowDataMissing, getWorkflowMissing, getWorkflowNextAction, normalizeWorkflowChecks } from "@/features/orders/order-workflow";
+import { allocateOrderStock, hasAnyFulfillableLine, hasAnyShortageLine } from "@/features/orders/stock-allocation";
 
 export async function GET() {
   const orders = await prisma.order.findMany({
@@ -14,9 +15,10 @@ export async function GET() {
 
   return NextResponse.json(orders.map((order) => {
     const shortages = shortagesFromOrderItems(order.items);
+    const fulfillment = fulfillmentFromOrderItems(order.items);
     const warnings = [
       ...(order.paymentKind === "debt" ? ["Công nợ"] : []),
-      ...shortages.map((shortage) => `Thiếu hàng: ${shortage.productName} thiếu ${shortage.shortage.toLocaleString("vi-VN")} ${shortage.unit}`)
+      ...shortages.map((shortage) => `Chờ hàng: ${shortage.productName} thiếu ${shortage.shortage.toLocaleString("vi-VN")} ${shortage.unit}`)
     ];
     return {
       id: order.id,
@@ -29,7 +31,8 @@ export async function GET() {
       receiverName: order.receiverName ?? undefined,
       receiverPhone: order.receiverPhone ?? undefined,
       receiverAddress: order.receiverAddress ?? undefined,
-      productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity.toLocaleString("vi-VN")} ${item.product.unit}${item.conversionNote ? ` (${item.conversionNote})` : ""}`).join(", ") || "Chưa có hàng",
+      productSummary: order.items.map(formatOrderItemSummary).join(", ") || "Chưa có hàng",
+      fulfillment,
       total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
       codAmount: order.codAmount,
       province: order.province ?? "-",
@@ -99,7 +102,7 @@ export async function POST(request: Request) {
   const customer = await resolveCustomer(body);
   const isOfficial = Boolean(body.isOfficial);
   const workflowChecks = normalizeWorkflowChecks(body.workflowChecks);
-  const lines = (body.lines ?? []).filter((line: { productId?: string }) => line.productId).map((line: { productId: string; quantity: number; unitPrice: number; enteredQuantity?: number; enteredUnit?: string; conversionNote?: string }) => ({
+  const lines: OrderLinePayload[] = (body.lines ?? []).filter((line: { productId?: string }) => line.productId).map((line: { productId: string; quantity: number; unitPrice: number; enteredQuantity?: number; enteredUnit?: string; conversionNote?: string }) => ({
     productId: line.productId,
     quantity: Number(line.quantity),
     unitPrice: Number(line.unitPrice),
@@ -107,7 +110,14 @@ export async function POST(request: Request) {
     enteredUnit: line.enteredUnit || null,
     conversionNote: line.conversionNote || null
   }));
-  const shortages = await getShortagesForLines(lines);
+  const allocations = await getStockAllocationsForLines(lines);
+  const hasShortage = hasAnyShortageLine(allocations);
+  const hasFulfillable = hasAnyFulfillableLine(allocations);
+  const linesWithStock = lines.map((line, index) => ({
+    ...line,
+    fulfillableQuantity: allocations[index]?.fulfillableQuantity ?? 0,
+    shortageQuantity: allocations[index]?.shortageQuantity ?? 0
+  }));
   const shipmentInput = {
     deliveryMode: body.deliveryMode || "truck_share",
     freightPayer: body.freightPayer || "customer",
@@ -136,9 +146,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Đơn chính thức thiếu thông tin bắt buộc", missing: hardMissing }, { status: 422 });
   }
   const code = await nextOrderCode();
-  const status: OrderStatus = shortages.length ? "awaiting_stock" : isOfficial && body.kiotInvoiceCode ? "kiot_linked" : "draft";
-  const shortageNote = shortages.length
-    ? `Thiếu hàng: ${shortages.map((item) => `${item.productName} thiếu ${item.shortage.toLocaleString("vi-VN")} ${item.unit}`).join("; ")}`
+  const status: OrderStatus = hasShortage && !hasFulfillable ? "awaiting_stock" : isOfficial && body.kiotInvoiceCode ? "kiot_linked" : "draft";
+  const shortageNote = hasShortage
+    ? `Hàng chờ nhập cho khách: ${allocations.filter((item) => item.shortageQuantity > 0).map((item) => `${item.productName ?? item.productId} thiếu ${item.shortageQuantity.toLocaleString("vi-VN")} ${item.unit ?? ""}`).join("; ")}`
     : "";
   const order = await prisma.order.create({
     data: {
@@ -163,7 +173,7 @@ export async function POST(request: Request) {
       rawChat: body.rawText || null,
       workflowChecks,
       items: {
-        create: lines
+        create: linesWithStock
       },
       shipments: {
         create: {
@@ -186,6 +196,24 @@ type ShortageLine = {
   shortage: number;
 };
 
+type FulfillmentLine = {
+  productId: string;
+  productName: string;
+  unit: string;
+  requested: number;
+  fulfillable: number;
+  waiting: number;
+};
+
+type OrderLinePayload = {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  enteredQuantity: number | null;
+  enteredUnit: string | null;
+  conversionNote: string | null;
+};
+
 type ProductWithMovements = {
   id: string;
   name: string;
@@ -199,10 +227,12 @@ type OrderItemWithStock = {
   enteredQuantity?: number | null;
   enteredUnit?: string | null;
   conversionNote?: string | null;
+  fulfillableQuantity?: number | null;
+  shortageQuantity?: number | null;
   product: ProductWithMovements;
 };
 
-async function getShortagesForLines(lines: Array<{ productId: string; quantity: number }>): Promise<ShortageLine[]> {
+async function getStockAllocationsForLines(lines: Array<{ productId: string; quantity: number }>) {
   const requested = new Map<string, number>();
   for (const line of lines) requested.set(line.productId, (requested.get(line.productId) ?? 0) + Number(line.quantity ?? 0));
   if (!requested.size) return [];
@@ -210,33 +240,61 @@ async function getShortagesForLines(lines: Array<{ productId: string; quantity: 
     where: { id: { in: Array.from(requested.keys()) } },
     include: { inventoryMovement: true }
   });
-  return products
-    .map((product) => {
-      const quantity = requested.get(product.id) ?? 0;
-      const available = getAvailable(product.inventoryMovement);
-      return {
-        productId: product.id,
-        productName: product.name,
-        unit: product.unit,
-        requested: quantity,
-        available,
-        shortage: Math.max(0, quantity - available)
-      };
-    })
-    .filter((item) => item.shortage > 0);
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const availableByProductId = new Map(products.map((product) => [product.id, getAvailable(product.inventoryMovement)]));
+  return allocateOrderStock(lines.map((line) => {
+    const product = productById.get(line.productId);
+    return {
+      productId: line.productId,
+      productName: product?.name ?? line.productId,
+      unit: product?.unit ?? "",
+      quantity: Number(line.quantity ?? 0)
+    };
+  }), availableByProductId);
+}
+
+function fulfillmentFromOrderItems(items: OrderItemWithStock[]): FulfillmentLine[] {
+  return items.map((item) => {
+    const fallbackAvailable = getAvailable(item.product.inventoryMovement);
+    const storedFulfillable = item.fulfillableQuantity ?? 0;
+    const storedWaiting = item.shortageQuantity ?? 0;
+    const useFallback = item.quantity > 0 && storedFulfillable === 0 && storedWaiting === 0;
+    const fulfillable = useFallback ? Math.min(item.quantity, fallbackAvailable) : storedFulfillable;
+    const waiting = useFallback ? Math.max(0, item.quantity - fulfillable) : storedWaiting;
+    return {
+      productId: item.productId,
+      productName: item.product.name,
+      unit: item.product.unit,
+      requested: item.quantity,
+      fulfillable,
+      waiting
+    };
+  });
+}
+
+function formatOrderItemSummary(item: OrderItemWithStock): string {
+  const fallbackAvailable = getAvailable(item.product.inventoryMovement);
+  const storedFulfillable = item.fulfillableQuantity ?? 0;
+  const storedWaiting = item.shortageQuantity ?? 0;
+  const useFallback = item.quantity > 0 && storedFulfillable === 0 && storedWaiting === 0;
+  const fulfillable = useFallback ? Math.min(item.quantity, fallbackAvailable) : storedFulfillable;
+  const waiting = useFallback ? Math.max(0, item.quantity - fulfillable) : storedWaiting;
+  const splitNote = waiting > 0
+    ? ` - gửi trước ${fulfillable.toLocaleString("vi-VN")} ${item.product.unit}, chờ ${waiting.toLocaleString("vi-VN")} ${item.product.unit}`
+    : "";
+  return `${item.product.name} x ${item.quantity.toLocaleString("vi-VN")} ${item.product.unit}${splitNote}${item.conversionNote ? ` (${item.conversionNote})` : ""}`;
 }
 
 function shortagesFromOrderItems(items: OrderItemWithStock[]): ShortageLine[] {
-  return items
+  return fulfillmentFromOrderItems(items)
     .map((item) => {
-      const available = getAvailable(item.product.inventoryMovement);
       return {
         productId: item.productId,
-        productName: item.product.name,
-        unit: item.product.unit,
-        requested: item.quantity,
-        available,
-        shortage: Math.max(0, item.quantity - available)
+        productName: item.productName,
+        unit: item.unit,
+        requested: item.requested,
+        available: item.fulfillable,
+        shortage: item.waiting
       };
     })
     .filter((item) => item.shortage > 0);

@@ -34,7 +34,7 @@ export function ColumnVisibilityDropdown<T extends string>({
     <Dropdown
       trigger={["click"]}
       placement="bottomRight"
-      dropdownRender={() => (
+      popupRender={() => (
         <div className="column-visibility-menu">
           <Space direction="vertical" size={6}>
             <Checkbox

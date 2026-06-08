@@ -14,6 +14,7 @@ import { estimateOrderWeightKg, parseKiotInvoiceText } from "@/features/orders/k
 import { orderTypeLabels, paymentStatusLabels, type OrderType, type PaymentStatus } from "@/features/orders/order-workflow";
 import { WorkflowChecklist } from "@/features/orders/components/WorkflowChecklist";
 import { printCodHandoff, printPackingSlip as openPackingSlip } from "@/features/orders/print-documents";
+import { allocateOrderStock } from "@/features/orders/stock-allocation";
 import { formatMoney, formatMoneyInput, formatQuantityInput, parseMoneyInput, parseQuantityInput } from "@/lib/number-format";
 
 type Line = {
@@ -142,15 +143,23 @@ export function OrderEntryForm() {
   const isOfficial = orderMode === "official";
   const isIntermediary = customerRelation === "intermediary";
   const stockByProductId = useMemo(() => new Map(inventory.map((row) => [row.productId, row])), [inventory]);
-  const stockWarnings = useMemo(() => lines
-    .map((line) => {
-      if (!line.productId) return null;
-      const stock = stockByProductId.get(line.productId);
+  const lineAllocations = useMemo(() => {
+    const availableByProductId = new Map(inventory.map((row) => [row.productId, row.available]));
+    const allocations = allocateOrderStock(lines.map((line) => {
+      const stock = line.productId ? stockByProductId.get(line.productId) : undefined;
       const productName = products.find((product) => product.id === line.productId)?.name ?? line.productName ?? "Sản phẩm";
-      const shortage = Math.max(0, line.quantity - (stock?.available ?? 0));
-      return shortage > 0 ? `${productName} thiếu ${shortage.toLocaleString("vi-VN")} ${stock?.unit ?? ""}` : null;
-    })
-    .filter((item): item is string => Boolean(item)), [lines, products, stockByProductId]);
+      return {
+        productId: line.productId ?? line.key,
+        productName,
+        unit: stock?.unit ?? getLineProduct(line)?.unit ?? "",
+        quantity: line.productId ? line.quantity : 0
+      };
+    }), availableByProductId);
+    return new Map(lines.map((line, index) => [line.key, allocations[index]]));
+  }, [inventory, lines, products, stockByProductId]);
+  const stockWarnings = useMemo(() => Array.from(lineAllocations.values())
+    .filter((line) => line.shortageQuantity > 0)
+    .map((line) => `${line.productName ?? "Sản phẩm"} chờ ${line.shortageQuantity.toLocaleString("vi-VN")} ${line.unit ?? ""}`), [lineAllocations]);
 
   useEffect(() => {
     void loadProducts();
@@ -218,8 +227,17 @@ export function OrderEntryForm() {
       width: 150,
       render: (_, record) => {
         const stock = record.productId ? stockByProductId.get(record.productId) : undefined;
-        const shortage = Math.max(0, record.quantity - (stock?.available ?? 0));
-        return shortage > 0 ? <Tag color="red">Thiếu {shortage.toLocaleString("vi-VN")} {stock?.unit}</Tag> : <Tag color="green">{stock ? `${stock.available.toLocaleString("vi-VN")} ${stock.unit}` : "Đủ"}</Tag>;
+        const allocation = lineAllocations.get(record.key);
+        if (!record.productId) return <Tag color="default">Chưa chọn</Tag>;
+        if (allocation?.shortageQuantity) {
+          return (
+            <Space direction="vertical" size={2}>
+              <Tag color="green">Gửi {allocation.fulfillableQuantity.toLocaleString("vi-VN")} {stock?.unit}</Tag>
+              <Tag color="red">Chờ {allocation.shortageQuantity.toLocaleString("vi-VN")} {stock?.unit}</Tag>
+            </Space>
+          );
+        }
+        return <Tag color="green">{stock ? `Gửi được ${record.quantity.toLocaleString("vi-VN")} ${stock.unit}` : "Đủ"}</Tag>;
       }
     },
     {
@@ -261,13 +279,14 @@ export function OrderEntryForm() {
       }
     },
     {
-      title: "Thiếu",
+      title: "Gửi/Chờ",
       dataIndex: "productId",
       width: 120,
       render: (_, record) => {
         const stock = record.productId ? stockByProductId.get(record.productId) : undefined;
-        const shortage = Math.max(0, record.quantity - (stock?.available ?? 0));
-        return shortage > 0 ? <Tag color="red">{shortage.toLocaleString("vi-VN")} {stock?.unit}</Tag> : <Tag color="green">Đủ</Tag>;
+        const allocation = lineAllocations.get(record.key);
+        if (allocation?.shortageQuantity) return <Tag color="red">Gửi {allocation.fulfillableQuantity.toLocaleString("vi-VN")} / chờ {allocation.shortageQuantity.toLocaleString("vi-VN")} {stock?.unit}</Tag>;
+        return <Tag color="green">Gửi đủ</Tag>;
       }
     },
     {
@@ -507,7 +526,7 @@ export function OrderEntryForm() {
       return;
     }
     const order = await response.json();
-    const statusText = order.status === "awaiting_stock" ? " - đang chờ nhập hàng" : nextOfficial ? " - đơn chính thức" : " - đơn nháp";
+    const statusText = order.status === "awaiting_stock" ? " - toàn bộ đang chờ nhập hàng" : stockWarnings.length ? " - có phần hàng chờ nhập" : nextOfficial ? " - đơn chính thức" : " - đơn nháp";
     message.success(`Đã lưu đơn ${order.code}${statusText}`);
   }
 
@@ -528,7 +547,7 @@ export function OrderEntryForm() {
           ]}
         />
       </div>
-      {stockWarnings.length ? <Alert type="warning" showIcon title="Có hàng thiếu, đơn sẽ vào cột Chờ nhập hàng" description={stockWarnings.slice(0, 5).join(" • ")} style={{ marginBottom: 12 }} /> : null}
+      {stockWarnings.length ? <Alert type="warning" showIcon title="Có hàng chờ nhập cho khách" description={`Dòng đủ tồn vẫn gửi trước bình thường. Phần thiếu sẽ được lưu riêng trên từng dòng: ${stockWarnings.slice(0, 5).join(" • ")}`} style={{ marginBottom: 12 }} /> : null}
       <div className="order-workbench">
         <Tabs
           type="card"

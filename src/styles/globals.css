@@ -766,6 +766,19 @@ html[data-theme="dark"] .app-header {
   margin-inline-end: 0;
 }
 
+.kanban-stock-split {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #ffd6d6;
+  border-radius: 8px;
+  background: #fff7f7;
+  padding: 7px;
+}
+
+.kanban-stock-split .ant-tag {
+  width: fit-content;
+}
+
 .kanban-card-overlay {
   width: 320px;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.26);
@@ -985,6 +998,11 @@ html[data-theme="dark"] .kanban-card-cod {
 html[data-theme="dark"] .kanban-cod-panel {
   border-color: #7c3a18;
   background: #2b1d14;
+}
+
+html[data-theme="dark"] .kanban-stock-split {
+  border-color: #7f2d2d;
+  background: #2b1515;
 }
 
 html[data-theme="dark"] .kanban-cod-panel span {

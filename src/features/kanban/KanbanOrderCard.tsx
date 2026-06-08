@@ -50,6 +50,8 @@ function KanbanOrderCardContent({ order }: { order: KanbanOrder }) {
   const isCod = isCodOrder(order);
   const isDraft = order.status === "draft" || order.isOfficial === false;
   const codSent = order.workflowChecks?.includes("cod_info_sent_to_post");
+  const waitingLines = order.fulfillment?.filter((line) => line.waiting > 0) ?? [];
+  const readyCount = order.fulfillment?.filter((line) => line.fulfillable > 0).length ?? 0;
   return (
     <>
       <div className="card-line kanban-card-head">
@@ -62,6 +64,17 @@ function KanbanOrderCardContent({ order }: { order: KanbanOrder }) {
       <Typography.Text>{order.customer}</Typography.Text>
       <div className="muted"><PhoneOutlined /> {order.phone}</div>
       <div className="kanban-product-summary">{order.productSummary}</div>
+      {waitingLines.length ? (
+        <div className="kanban-stock-split">
+          <Tag color="green">Gửi trước {readyCount} dòng</Tag>
+          <Tag color="red">Chờ nhập {waitingLines.length} dòng</Tag>
+          {waitingLines.slice(0, 2).map((line) => (
+            <Typography.Text key={`${line.productId}-${line.waiting}`} type="secondary">
+              {line.productName}: chờ {line.waiting.toLocaleString("vi-VN")} {line.unit}
+            </Typography.Text>
+          ))}
+        </div>
+      ) : null}
       {isCod ? (
         <div className="kanban-cod-panel">
           <div><span>Thu COD</span><b>{formatMoney(order.codAmount)}</b></div>

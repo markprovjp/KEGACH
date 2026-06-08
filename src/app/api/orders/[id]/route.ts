@@ -40,11 +40,13 @@ export async function PUT(request: Request, context: RouteContext) {
   };
   const move = canMoveToStatus(nextWorkflow, nextStatus);
   if (!move.ok) return NextResponse.json({ error: "Chưa đủ checklist để chuyển trạng thái", missing: move.missing }, { status: 422 });
-  const shortages = shortagesFromOrderItems(existing.items);
-  if (["reserved", "packing", "packed", "waiting_vehicle", "scheduled", "shipped", "delivered"].includes(nextStatus) && shortages.length > 0) {
+  const fulfillment = fulfillmentFromOrderItems(existing.items);
+  const shortages = fulfillment.filter((item) => item.waiting > 0);
+  const hasFulfillable = fulfillment.some((item) => item.fulfillable > 0);
+  if (["reserved", "packing", "packed", "waiting_vehicle", "scheduled", "shipped", "delivered"].includes(nextStatus) && !hasFulfillable) {
     return NextResponse.json({
-      error: "Chưa đủ hàng để chuyển trạng thái",
-      missing: shortages.map((item) => `${item.productName} thiếu ${item.shortage.toLocaleString("vi-VN")} ${item.unit}`)
+      error: "Đơn này chưa có dòng hàng nào đủ tồn để gửi trước",
+      missing: shortages.map((item) => `${item.productName} thiếu ${item.waiting.toLocaleString("vi-VN")} ${item.unit}`)
     }, { status: 422 });
   }
 
@@ -126,15 +128,16 @@ type OrderWithRelations = {
   status: OrderStatus;
   note: string | null;
   workflowChecks: unknown;
-  items: Array<{ productId: string; quantity: number; unitPrice: number; enteredQuantity?: number | null; enteredUnit?: string | null; conversionNote?: string | null; product: { name: string; unit: string; inventoryMovement: Array<{ type: string; quantity: number }> } }>;
+  items: Array<{ productId: string; quantity: number; unitPrice: number; enteredQuantity?: number | null; enteredUnit?: string | null; conversionNote?: string | null; fulfillableQuantity?: number | null; shortageQuantity?: number | null; product: { name: string; unit: string; inventoryMovement: Array<{ type: string; quantity: number }> } }>;
   shipments: Array<{ carrierName: string | null; driverName: string | null; deliveryMode: string; freightPayer: string; packageCount: number; estimatedWeightKg: number }>;
 };
 
 function toOrderRow(order: OrderWithRelations) {
   const shortages = shortagesFromOrderItems(order.items);
+  const fulfillment = fulfillmentFromOrderItems(order.items);
   const warnings = [
     ...(order.paymentKind === "debt" ? ["Công nợ"] : []),
-    ...shortages.map((shortage) => `Thiếu hàng: ${shortage.productName} thiếu ${shortage.shortage.toLocaleString("vi-VN")} ${shortage.unit}`)
+    ...shortages.map((shortage) => `Chờ hàng: ${shortage.productName} thiếu ${shortage.shortage.toLocaleString("vi-VN")} ${shortage.unit}`)
   ];
   return {
     id: order.id,
@@ -147,7 +150,8 @@ function toOrderRow(order: OrderWithRelations) {
     receiverName: order.receiverName ?? undefined,
     receiverPhone: order.receiverPhone ?? undefined,
     receiverAddress: order.receiverAddress ?? undefined,
-    productSummary: order.items.map((item) => `${item.product.name} x ${item.quantity.toLocaleString("vi-VN")} ${item.product.unit}${item.conversionNote ? ` (${item.conversionNote})` : ""}`).join(", ") || "Chưa có hàng",
+    productSummary: order.items.map(formatOrderItemSummary).join(", ") || "Chưa có hàng",
+    fulfillment,
     total: order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     codAmount: order.codAmount,
     province: order.province ?? "-",
@@ -217,19 +221,57 @@ type ShortageLine = {
   shortage: number;
 };
 
+type FulfillmentLine = {
+  productId: string;
+  productName: string;
+  unit: string;
+  requested: number;
+  fulfillable: number;
+  waiting: number;
+};
+
+function fulfillmentFromOrderItems(items: OrderWithRelations["items"]): FulfillmentLine[] {
+  return items.map((item) => {
+    const fallbackAvailable = getAvailable(item.product.inventoryMovement);
+    const storedFulfillable = item.fulfillableQuantity ?? 0;
+    const storedWaiting = item.shortageQuantity ?? 0;
+    const useFallback = item.quantity > 0 && storedFulfillable === 0 && storedWaiting === 0;
+    const fulfillable = useFallback ? Math.min(item.quantity, fallbackAvailable) : storedFulfillable;
+    const waiting = useFallback ? Math.max(0, item.quantity - fulfillable) : storedWaiting;
+    return {
+      productId: item.productId,
+      productName: item.product.name,
+      unit: item.product.unit,
+      requested: item.quantity,
+      fulfillable,
+      waiting
+    };
+  });
+}
+
+function formatOrderItemSummary(item: OrderWithRelations["items"][number]): string {
+  const fallbackAvailable = getAvailable(item.product.inventoryMovement);
+  const storedFulfillable = item.fulfillableQuantity ?? 0;
+  const storedWaiting = item.shortageQuantity ?? 0;
+  const useFallback = item.quantity > 0 && storedFulfillable === 0 && storedWaiting === 0;
+  const fulfillable = useFallback ? Math.min(item.quantity, fallbackAvailable) : storedFulfillable;
+  const waiting = useFallback ? Math.max(0, item.quantity - fulfillable) : storedWaiting;
+  const splitNote = waiting > 0
+    ? ` - gửi trước ${fulfillable.toLocaleString("vi-VN")} ${item.product.unit}, chờ ${waiting.toLocaleString("vi-VN")} ${item.product.unit}`
+    : "";
+  return `${item.product.name} x ${item.quantity.toLocaleString("vi-VN")} ${item.product.unit}${splitNote}${item.conversionNote ? ` (${item.conversionNote})` : ""}`;
+}
+
 function shortagesFromOrderItems(items: OrderWithRelations["items"]): ShortageLine[] {
-  return items
-    .map((item) => {
-      const available = getAvailable(item.product.inventoryMovement);
-      return {
-        productId: item.productId,
-        productName: item.product.name,
-        unit: item.product.unit,
-        requested: item.quantity,
-        available,
-        shortage: Math.max(0, item.quantity - available)
-      };
-    })
+  return fulfillmentFromOrderItems(items)
+    .map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      unit: item.unit,
+      requested: item.requested,
+      available: item.fulfillable,
+      shortage: item.waiting
+    }))
     .filter((item) => item.shortage > 0);
 }
 

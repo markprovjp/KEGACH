@@ -11,6 +11,14 @@ export type KanbanOrder = {
   receiverPhone?: string;
   receiverAddress?: string;
   productSummary: string;
+  fulfillment?: Array<{
+    productId: string;
+    productName: string;
+    unit: string;
+    requested: number;
+    fulfillable: number;
+    waiting: number;
+  }>;
   total: number;
   codAmount: number;
   province: string;
